@@ -18,18 +18,18 @@
   --bg:#f2f2f7;--surface:#fff;--surface2:#f2f2f7;--ink:#000;--muted:#8a8a8e;--line:rgba(60,60,67,.18);
   --accent:#007aff;--accent-ink:#fff;--tint:rgba(0,122,255,.12);
   --warn:#e07b00;--warn-bg:rgba(255,149,0,.14);--good:#248a3d;--good-bg:rgba(52,199,89,.16);
-  --bar:rgba(249,249,249,.86);--c3:#a5cdfd;--c5:#4da3ff;--c7:#007aff;--radius:12px;
+  --bad:#d70015;--bar:rgba(249,249,249,.86);--c3:#a5cdfd;--c5:#4da3ff;--c7:#007aff;--radius:12px;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#000;--surface:#1c1c1e;--surface2:#2c2c2e;--ink:#fff;--muted:#98989f;--line:rgba(84,84,88,.55);
   --accent:#0a84ff;--accent-ink:#fff;--tint:rgba(10,132,255,.2);
   --warn:#ff9f0a;--warn-bg:rgba(255,159,10,.18);--good:#30d158;--good-bg:rgba(48,209,88,.18);
-  --bar:rgba(29,29,31,.86);--c3:#1d4f8f;--c5:#3a8ee6;--c7:#0a84ff;}}
+  --bad:#ff453a;--bar:rgba(29,29,31,.86);--c3:#1d4f8f;--c5:#3a8ee6;--c7:#0a84ff;}}
 :root[data-theme="dark"]{
   --bg:#000;--surface:#1c1c1e;--surface2:#2c2c2e;--ink:#fff;--muted:#98989f;--line:rgba(84,84,88,.55);
   --accent:#0a84ff;--accent-ink:#fff;--tint:rgba(10,132,255,.2);
   --warn:#ff9f0a;--warn-bg:rgba(255,159,10,.18);--good:#30d158;--good-bg:rgba(48,209,88,.18);
-  --bar:rgba(29,29,31,.86);--c3:#1d4f8f;--c5:#3a8ee6;--c7:#0a84ff;}
+  --bad:#ff453a;--bar:rgba(29,29,31,.86);--c3:#1d4f8f;--c5:#3a8ee6;--c7:#0a84ff;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Noto Sans SC",sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:760px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 96px)}
@@ -91,7 +91,12 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .rate .pv{font-size:12px;color:var(--muted)}
 .bar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden;margin-top:4px}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
-.bar i.av{background:var(--warn)}
+.bar i.av,.bar i.near{background:var(--warn)}
+.bar i.over{background:var(--bad)}
+.st.near{color:var(--warn);font-weight:600}.st.over{color:var(--bad);font-weight:600}.st.ok{color:var(--muted)}
+.bud{margin:12px 0}.bud .t{display:flex;justify-content:space-between;gap:8px;font-size:15px}.bud .s{display:flex;justify-content:space-between;font-size:12px;margin-top:4px}
+.hint.bad{background:rgba(255,59,48,.14)}.hint.bad b{color:var(--bad)}
+.brow{display:flex;align-items:center;gap:8px;margin:8px 0}.brow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brow input{width:110px}
 .cat{margin:12px 0}
 .cat .t{display:flex;justify-content:space-between;font-size:15px}
 .big{font-size:15px;line-height:1.7}
@@ -128,6 +133,10 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
       <div id="liveHint" class="hint" hidden></div>
       <div class="row" style="margin-top:14px"><button class="btn grow" id="add">记下来</button><button class="btn good grow" id="skip">我忍住了</button><button class="btn ghost grow" id="cancelEdit" hidden>取消修改</button></div>
       <div class="msg" id="addMsg"></div>
+    </div>
+    <div class="card" id="budCard" hidden>
+      <h2>本月预算</h2>
+      <div id="budList"></div>
     </div>
     <div class="card">
       <div class="row" style="justify-content:space-between;margin-bottom:6px">
@@ -181,6 +190,10 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
       <div id="cats" style="margin-top:8px"></div>
       <div id="avBox" class="hint" hidden></div>
     </div>
+    <div class="card" id="budCard2" hidden>
+      <h2 id="budTitle2">预算</h2>
+      <div id="budList2"></div>
+    </div>
     <div class="card" id="cmpCard">
       <h2 id="cmpTitle">与上月对比</h2>
       <div id="cmp"></div>
@@ -198,6 +211,16 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
         <div><label for="si">通膨率 (%/年)</label><input id="si" type="number" inputmode="decimal" step="0.1" min="0" max="20"></div>
       </div>
       <p class="msg">「不必要」= Smoking、Unnecessary、Drinks。Money Left = 薪水 − 固定扣除 − 总支出。</p>
+    </div>
+    <div class="card">
+      <h2>每月预算</h2>
+      <div class="grid">
+        <div><label for="bt">总预算 (RM)</label><input id="bt" type="number" inputmode="decimal" step="1" min="0" placeholder="不设就留空"></div>
+        <div><label for="ba">「不必要」合计 (RM)</label><input id="ba" type="number" inputmode="decimal" step="1" min="0" placeholder="不设就留空"></div>
+      </div>
+      <div id="bcl" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:10px"><select id="bcs" style="flex:1;width:auto"></select><input id="bcv" type="number" inputmode="decimal" step="1" min="0" placeholder="RM" style="width:100px"><button class="btn small" id="bca">添加</button></div>
+      <p class="msg">用到 80% 变橙色提醒，超过 100% 变红。「不必要」= Smoking、Unnecessary、Drinks 合计。只算当月支出，「我忍住了」不算。</p>
     </div>
     <div class="card">
       <h2>同步 (Google Sheet)</h2>
@@ -259,8 +282,23 @@ function syncUI(){
   el.className="sync";
   el.textContent=syncing?"同步中…":(n?n+" 项待同步":(lastOk?"已同步 "+lastOk:"已连接"));
 }
+function setBud(k,v){S.set["bud_"+k]=v>0?v:0;S.setDirty=true;queue();syncUI();budgetView();if(cur==="sum")sumView()}
+function budSetView(force){
+  if(document.activeElement!==$("bt"))$("bt").value=S.set.bud_TOTAL>0?S.set.bud_TOTAL:"";
+  if(document.activeElement!==$("ba"))$("ba").value=S.set.bud_AVOID>0?S.set.bud_AVOID:"";
+  if(!force&&$("bcl").contains(document.activeElement))return;
+  $("bcl").innerHTML=budKeys().map(function(k){return k.slice(4)}).filter(function(c){return c!=="TOTAL"&&c!=="AVOID"}).map(function(c){
+    return '<div class="brow"><span class="n">'+esc(c)+'</span><input type="number" inputmode="decimal" step="1" min="0" data-bc="'+esc(c)+'" value="'+S.set["bud_"+c]+'"><button class="x" data-bcdel="'+esc(c)+'" aria-label="移除">×</button></div>';
+  }).join("");
+}
+$("bt").addEventListener("input",function(){setBud("TOTAL",parseFloat(this.value))});
+$("ba").addEventListener("input",function(){setBud("AVOID",parseFloat(this.value))});
+$("bcl").addEventListener("input",function(e){var c=e.target.getAttribute("data-bc");if(c)setBud(c,parseFloat(e.target.value))});
+$("bcl").addEventListener("click",function(e){var c=e.target.getAttribute("data-bcdel");if(c){setBud(c,0);budSetView(true)}});
+$("bca").addEventListener("click",function(){var v=parseFloat($("bcv").value);if(!(v>0))return;setBud($("bcs").value,v);$("bcv").value="";budSetView(true)});
 function fillSettings(){
   [["sw","wage"],["sd","ded"],["si","infl"]].forEach(function(p){if(document.activeElement!==$(p[0]))$(p[0]).value=p[1]==="wage"?(S.set.wage||""):S.set[p[1]]});
+  budSetView();
 }
 function syncNow(){
   if(!C.url||!C.token||syncing||!navigator.onLine)return Promise.resolve();
@@ -326,6 +364,7 @@ function fillMonths(sel,keep){
   sel.value=ms.indexOf(cur)>=0?cur:ms[0];
 }
 function listView(){
+  budgetView();
   fillMonths($("lm"));
   var m=$("lm").value;
   var rows=spent().filter(function(x){return x.date.slice(0,7)===m}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id});
@@ -346,12 +385,43 @@ $("list").addEventListener("click",function(e){
   if(t){var x=S.expenses.filter(function(y){return String(y.id)===t})[0];if(x){$("ta").value=x.amt;$("tf").value="once";tab("think");}}
 });
 $("lm").addEventListener("change",listView);
+/* ---- budgets: settings bud_TOTAL / bud_AVOID / bud_<Category> (monthly, RM) ---- */
+function budKeys(){return Object.keys(S.set).filter(function(k){return k.indexOf("bud_")===0&&+S.set[k]>0})}
+function budState(pct){return pct>100?"over":pct>=80?"near":"ok"}
+function budgetRows(m,extra,skipId){  /* extra = {cat,amt}: what-if this amount is added to month m; skipId = record being edited */
+  var d=monthData(m,skipId),tot=d.tot,av=d.av,bc=d.bc,rows=[];
+  if(extra){tot+=extra.amt;if(AVOID[extra.cat])av+=extra.amt;bc=JSON.parse(JSON.stringify(bc));bc[extra.cat]=(bc[extra.cat]||0)+extra.amt}
+  if(+S.set.bud_TOTAL>0)rows.push({key:"TOTAL",label:"总支出",used:tot,b:+S.set.bud_TOTAL});
+  if(+S.set.bud_AVOID>0)rows.push({key:"AVOID",label:"不必要合计",used:av,b:+S.set.bud_AVOID});
+  budKeys().forEach(function(k){var c=k.slice(4);if(c==="TOTAL"||c==="AVOID")return;rows.push({key:c,label:c,used:bc[c]||0,b:+S.set[k]})});
+  rows.forEach(function(r){r.pct=r.used/r.b*100;r.state=budState(r.pct)});
+  return rows;
+}
+function renderBudget(listEl,cardEl,rows){
+  if(!rows.length){cardEl.hidden=true;return}
+  cardEl.hidden=false;
+  rows.sort(function(a,b){return b.pct-a.pct});
+  listEl.innerHTML=rows.map(function(r){
+    var left=r.b-r.used,st=r.state==="over"?"超支 "+rm0(-left):r.state==="near"?"快用完，还剩 "+rm0(left):"还剩 "+rm0(left);
+    return '<div class="bud"><div class="t"><span>'+esc(r.label)+'</span><span class="amt">'+rm0(r.used)+' / '+rm0(r.b)+'</span></div><div class="bar"><i class="'+r.state+'" style="width:'+Math.min(100,r.pct)+'%"></i></div><div class="s"><span class="st '+r.state+'">'+st+'</span><span class="st '+r.state+'">'+Math.round(r.pct)+'%</span></div></div>';
+  }).join("");
+}
+function budgetView(){renderBudget($("budList"),$("budCard"),budgetRows(today().slice(0,7)))}
+function budgetWarnHtml(rows){
+  return rows.map(function(r){return (r.state==="over"?"⚠️ 超预算：":"⚠️ 快到预算：")+esc(r.label)+" 本月会到 <b>"+rm0(r.used)+" / "+rm0(r.b)+"（"+Math.round(r.pct)+"%）</b>"}).join("<br>");
+}
 function hint(){
-  var a=parseFloat($("fa").value),c=$("fc").value,h=$("liveHint");
-  if(!(a>0)||!AVOID[c]){h.hidden=true;return}
-  var r=fv(a,"once",S.set.rate,10);
-  h.hidden=false;
-  h.innerHTML='先停一下：这 <b>'+rm(a)+'</b> 如果存起来，按 '+S.set.rate+'% 放 10 年 ≈ <b>'+rm(r.fv)+'</b>（扣通膨后约 '+rm(pv(r.fv,10))+'）。若是每天都这样买，看「先别买」。';
+  var a=parseFloat($("fa").value),c=$("fc").value,h=$("liveHint"),parts=[],bad=false;
+  if(!(a>0)){h.hidden=true;return}
+  if(AVOID[c]){
+    var r=fv(a,"once",S.set.rate,10);
+    parts.push('先停一下：这 <b>'+rm(a)+'</b> 如果存起来，按 '+S.set.rate+'% 放 10 年 ≈ <b>'+rm(r.fv)+'</b>（扣通膨后约 '+rm(pv(r.fv,10))+'）。若是每天都这样买，看「先别买」。');
+  }
+  var m=($("fd").value||today()).slice(0,7);
+  var rows=budgetRows(m,{cat:c,amt:a},editId).filter(function(x){return x.state!=="ok"&&(x.key==="TOTAL"||x.key===c||(x.key==="AVOID"&&AVOID[c]))});
+  if(rows.length){parts.push(budgetWarnHtml(rows));bad=rows.some(function(x){return x.state==="over"})}
+  if(!parts.length){h.hidden=true;return}
+  h.hidden=false;h.className="hint"+(bad?" bad":"");h.innerHTML=parts.join("<br>");
 }
 $("fa").addEventListener("input",hint);$("fc").addEventListener("change",hint);
 var editId=null;
@@ -379,6 +449,9 @@ $("add").addEventListener("click",function(){
   $("fa").value="";$("fi").value="";$("liveHint").hidden=true;$("addMsg").textContent=editing?"已修改 ✓":"已记录 ✓";
   setTimeout(function(){$("addMsg").textContent=""},1800);
   $("lm").value=d.slice(0,7);listView();
+  var w=budgetRows(d.slice(0,7)).filter(function(r){return r.state!=="ok"&&(r.key==="TOTAL"||r.key===rec.cat||(r.key==="AVOID"&&AVOID[rec.cat]))});
+  if(w.length){var h=$("liveHint");h.className="hint"+(w.some(function(r){return r.state==="over"})?" bad":"");h.innerHTML=budgetWarnHtml(w);h.hidden=false;
+    clearTimeout(window.__bw);window.__bw=setTimeout(function(){if(!$("fa").value)h.hidden=true},7000)}
 });
 
 $("skip").addEventListener("click",function(){
@@ -479,11 +552,12 @@ function sumView(){
     b.innerHTML='这个月「不必要」花了 <b>'+rm0(av)+'</b>。如果每个月都省下这个数，存 10 年（'+S.set.rate+'%）≈ <b>'+rm0(o.fv)+'</b>，现值约 '+rm0(pv(o.fv,10))+'。'}
   else b.hidden=true;
   cmpView(m);
+  $("budTitle2").textContent=m+" 预算";renderBudget($("budList2"),$("budCard2"),budgetRows(m));
 }
 function prevMonth(m,k){var y=+m.slice(0,4),n=+m.slice(5,7)-(k===undefined?1:k);while(n<1){n+=12;y--}return y+"-"+String(n).padStart(2,"0")}
-function monthData(m){
+function monthData(m,skipId){
   var o={tot:0,av:0,bc:{},n:0};
-  spent().forEach(function(x){if(x.date.slice(0,7)!==m)return;o.n++;o.tot+=x.amt;if(AVOID[x.cat])o.av+=x.amt;o.bc[x.cat]=(o.bc[x.cat]||0)+x.amt});
+  spent().forEach(function(x){if(x.date.slice(0,7)!==m||(skipId!=null&&String(x.id)===String(skipId)))return;o.n++;o.tot+=x.amt;if(AVOID[x.cat])o.av+=x.amt;o.bc[x.cat]=(o.bc[x.cat]||0)+x.amt});
   return o;
 }
 function delta(cur,prev){
@@ -565,7 +639,8 @@ $("fc").innerHTML=CATS.map(function(c){return '<option>'+c+(AVOID[c]?'':'')+'</o
 $("fd").value=today();$("cu").value=C.url;$("ct").value=C.token;
 $("sw").value=S.set.wage||"";$("sd").value=S.set.ded;$("si").value=S.set.infl;
 $("tr").value="";T.years=S.set.years||10;
-yearChips();listView();
+$("bcs").innerHTML=CATS.map(function(c){return '<option>'+c+'</option>'}).join("");
+yearChips();listView();budSetView();
 syncUI();
 syncNow();
 window.addEventListener("online",syncNow);
