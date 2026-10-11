@@ -110,6 +110,17 @@ details.debt .bar{margin:10px 0 0}
 .cmp .v small.near{color:var(--warn);font-weight:600}.cmp .v small.over{color:var(--bad);font-weight:600}
 .prow{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:.5px solid var(--line);font-size:14px}
 .prow .d{width:96px;color:var(--muted);flex:none;white-space:nowrap;font-size:13px}.prow .n{flex:1;min-width:0;overflow-wrap:anywhere}.prow .n small{display:block;margin:0}
+.rrow{display:grid;grid-template-columns:1fr auto;gap:4px 8px;align-items:center;padding:12px 0;border-top:.5px solid var(--line)}
+.rrow:first-child{border-top:0}.rrow>b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .info{font-size:13px;color:var(--muted);min-width:0}.rrow .acts{display:flex;margin:-6px -8px -6px 0}
+.rrow.off>b,.rrow.off .amt,.rrow.off .info{opacity:.55}
+input[type=month]{-webkit-appearance:none;appearance:none;display:block;text-align:left;height:48px}
+.goalrow{padding:12px 0;border-top:.5px solid var(--line)}.goalrow:first-child{border-top:0}
+.goalrow .t{display:flex;align-items:center;gap:8px}.goalrow .t b{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.goalrow .bar{height:10px;margin:8px 0 4px}.goalrow .s{font-size:13px;color:var(--muted)}
+.goalrow.done .bar i{background:var(--good)}.goalrow.done .t b::after{content:" 🎯";}
+.celebrate .goal{margin-top:10px;padding:8px 12px;border-radius:12px;background:var(--tint);color:var(--accent);font-weight:600;font-size:14px}
+.celebrate .goal.hit{background:var(--good-bg);color:var(--good)}
 .brow{display:flex;align-items:center;gap:8px;margin:8px 0}.brow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brow input{width:110px}
 .cat{margin:12px 0}
 .cat .t{display:flex;justify-content:space-between;font-size:15px}
@@ -217,6 +228,17 @@ details.debt .bar{margin:10px 0 0}
       <div class="stat" id="sstat"></div>
       <div id="sNote" class="hint good" hidden></div>
     </div>
+    <div class="card" id="goalCard">
+      <h2 id="gtitle">忍住的目标</h2>
+      <div id="goalList"></div>
+      <div class="grid" style="margin-top:12px">
+        <div class="full"><label for="gn">目标名称</label><input id="gn" type="text" maxlength="60" placeholder="例如：应急金、旅行基金"></div>
+        <div class="full"><label for="gt">目标金额 (RM)</label><input id="gt" type="number" inputmode="decimal" step="1" min="0" placeholder="例如 5000"></div>
+      </div>
+      <div class="row" style="margin-top:14px"><button class="btn grow" id="gadd">添加目标</button><button class="btn ghost grow" id="gcancel" hidden>取消修改</button></div>
+      <div class="msg" id="gmsg"></div>
+      <p class="msg">进度 = 你累计忍住没花的钱。有多个目标时按添加的先后顺序依次填满：第一个满了，多出来的才算到第二个。估算时间按近 3 个月平均每月忍住多少来算。目标不会算进支出。</p>
+    </div>
     <div class="card">
       <h2>记录</h2>
       <div id="slist"></div>
@@ -290,6 +312,21 @@ details.debt .bar{margin:10px 0 0}
       <div class="row" style="margin-top:10px"><select id="bcs" style="flex:1;width:auto"></select><input id="bcv" type="number" inputmode="decimal" step="1" min="0" placeholder="RM" style="width:100px"><button class="btn small" id="bca">添加</button></div>
       <p class="msg">用到 80% 变橙色提醒，超过 100% 变红。「不必要」= Smoking、Unnecessary、Drinks 合计。只算当月支出，「我忍住了」不算。</p>
     </div>
+    <div class="card" id="recCard">
+      <h2 id="rtitle">每月固定支出</h2>
+      <div id="recList"></div>
+      <p class="msg" id="recTotal"></p>
+      <div class="grid" style="margin-top:12px">
+        <div class="full"><label for="rn">名称</label><input id="rn" type="text" maxlength="60" placeholder="例如：房租、网费、Netflix"></div>
+        <div><label for="ra">金额 (RM)</label><input id="ra" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div><label for="rd">每月几号</label><input id="rd" type="number" inputmode="numeric" min="1" max="31" value="1"></div>
+        <div class="full"><label for="rc">分类</label><select id="rc"></select></div>
+        <div class="full"><label for="rs">从哪个月开始（格式 2026-11）</label><input id="rs" type="month" placeholder="2026-11"></div>
+      </div>
+      <div class="row" style="margin-top:14px"><button class="btn grow" id="radd">添加</button><button class="btn ghost grow" id="rcancel" hidden>取消修改</button></div>
+      <div class="msg" id="rmsg"></div>
+      <p class="msg">到了设定的日子，app 会自动记一笔支出（一段时间没打开，下次打开会补记，最多补 12 个月）。默认从下个月开始，避免和你已经手动记过的这个月重复。29 到 31 号遇到短月份，按当月最后一天算。修改只影响以后的月份，删除不会删掉已经记好的支出。</p>
+    </div>
     <div class="card">
       <h2>同步 (Google Sheet)</h2>
       <p class="msg" style="margin-top:0">填入你个人 Apps Script 的网址和密钥。只保存在这台设备的浏览器里，不会写进代码。</p>
@@ -329,7 +366,7 @@ var SKIP="Skipped";  /* "忍住没买" records live in Expenses with this catego
 function spent(){
   var by=debts().by,out=[];
   S.expenses.forEach(function(x){
-    if(x.cat===SKIP||x.cat.indexOf("Debt:")===0)return;
+    if(x.cat===SKIP||x.cat.indexOf("Debt:")===0||x.cat.indexOf("Recur:")===0||x.cat.indexOf("Goal:")===0)return;
     if(x.cat.indexOf("DebtPay:")===0){var pr=payRef(x.cat),d=pr&&by[pr.id];if(d&&d.dir==="owe"&&d.spend)out.push({id:x.id,date:x.date,item:"还款："+d.name,cat:"还款",amt:x.amt,ro:true});return}
     out.push(x);
   });
@@ -363,13 +400,13 @@ function endCelebrate(){
   var el=document.getElementById("celebrate");clearTimeout(celeTimer);
   if(!el)return;el.removeAttribute("id");el.classList.add("out");setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},260);
 }
-function celebrate(amt,before,after,count){
+function celebrate(amt,before,after,count,goalLine,goalHit){
   endCelebrate();
   var ms="";
   if(count===1)ms="第一次忍住，好的开始！";
   else MILESTONES.forEach(function(m){if(before<m&&after>=m)ms="累计省下突破 "+rm0(m)+"！"});
   var el=document.createElement("div");el.id="celebrate";el.className="celebrate";el.setAttribute("role","status");
-  el.innerHTML='<div class="card2"><div class="big2">🎉</div><h3>太棒了，忍住了！</h3><div class="amt2">'+rm(amt)+'</div><p>'+CHEERS[Math.floor(Math.random()*CHEERS.length)]+'</p><p>累计已省 <b>'+rm(after)+'</b>（'+count+' 次）</p>'+(ms?'<div class="ms">'+ms+'</div>':'')+'<div class="tip">点任意位置继续</div></div>';
+  el.innerHTML='<div class="card2"><div class="big2">🎉</div><h3>太棒了，忍住了！</h3><div class="amt2">'+rm(amt)+'</div><p>'+CHEERS[Math.floor(Math.random()*CHEERS.length)]+'</p><p>累计已省 <b>'+rm(after)+'</b>（'+count+' 次）</p>'+(ms?'<div class="ms">'+ms+'</div>':'')+(goalLine?'<div class="goal'+(goalHit?' hit':'')+'">'+goalLine+'</div>':'')+'<div class="tip">点任意位置继续</div></div>';
   if(!reduceMotion()){
     var c=document.createElement("div");c.className="confetti";var cols=["#ff3b30","#ff9500","#ffcc00","#34c759","#0a84ff","#af52de","#ff2d55"];
     for(var i=0;i<34;i++){var p=document.createElement("i");
@@ -432,7 +469,7 @@ function syncNow(){
       if(sendSet){if(JSON.stringify(S.set)===snap)S.setDirty=false}
       else if(!S.setDirty&&res.settings){for(var k in res.settings)S.set[k]=res.settings[k]}
       var d=new Date();lastOk=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
-      lastErr="";ok=true;save();fillSettings();tab(cur);
+      lastErr="";ok=true;save();fillSettings();recurTick();tab(cur);
     })
     .catch(function(e){lastErr=String(e&&e.message||e)})
     .then(function(){
@@ -577,7 +614,10 @@ $("skip").addEventListener("click",function(){
   $("fa").value="";$("fi").value="";$("liveHint").hidden=true;
   $("addMsg").textContent="";
   var tot=0,n=0;S.expenses.forEach(function(x){if(x.cat===SKIP){tot+=x.amt;n++}});
-  celebrate(rec.amt,tot-rec.amt,tot,n);
+  var gb=goalProgress(tot-rec.amt),ga=goalProgress(tot),hit=ga.filter(function(g,i){return g.done&&!gb[i].done}),nxt=ga.filter(function(g){return !g.done})[0],line="";
+  if(hit.length)line="🎯 目标达成："+hit.map(function(g){return esc(g.name)}).join("、")+"！";
+  else if(nxt)line="距离「"+esc(nxt.name)+"」还差 "+rm0(nxt.target-nxt.saved)+"（已完成 "+Math.floor(nxt.saved/nxt.target*100)+"%）";
+  celebrate(rec.amt,tot-rec.amt,tot,n,line,hit.length>0);
 });
 
 /* ---- saved (忍住没买) ---- */
@@ -585,7 +625,63 @@ function monthsBetween(dateStr){
   var d=new Date(dateStr+"T00:00:00"),days=(Date.now()-d.getTime())/864e5;
   return days>0?days/(365/12):0;
 }
+/* ---- goals funded by skipped purchases: row cat "Goal:0", item = name, amt = target, date = created ---- */
+function goals(){
+  var out=[];S.expenses.forEach(function(x){if(x.cat.indexOf("Goal:")===0)out.push({id:x.id,name:x.item,target:x.amt,created:x.date})});
+  return out.sort(function(a,b){return a.id-b.id});
+}
+function goalProgress(total){          /* fill goals in order with the running total of skipped money */
+  var gs=goals(),used=0;
+  gs.forEach(function(g){g.saved=Math.max(0,Math.min(g.target,total-used));g.done=g.saved>=g.target-0.005;used+=g.target;g.cum=used});
+  return gs;
+}
+function skipTotal(){var t=0;S.expenses.forEach(function(x){if(x.cat===SKIP)t+=x.amt});return t}
+function skipPerMonth(){               /* average over the last 90 days */
+  var from=new Date(today()+"T00:00:00");from.setDate(from.getDate()-90);var t=0;
+  S.expenses.forEach(function(x){if(x.cat===SKIP&&new Date(x.date+"T00:00:00")>=from)t+=x.amt});
+  return t/3;
+}
+var goalEditId=null;
+function goalView(){
+  var T=skipTotal(),gs=goalProgress(T),rate=skipPerMonth();
+  $("goalList").innerHTML=gs.length?gs.map(function(g){
+    var pct=Math.min(100,g.saved/g.target*100),eta="";
+    if(g.done)eta="已达成 🎉";
+    else if(rate>0){var m=Math.ceil((g.cum-T)/rate);eta="还差 "+rm0(g.target-g.saved)+"，按近 3 个月平均每月忍住 "+rm0(rate)+"，约 "+m+" 个月后达成"}
+    else eta="还差 "+rm0(g.target-g.saved)+"（最近 3 个月没有忍住的记录，无法估算时间）";
+    return '<div class="goalrow'+(g.done?' done':'')+'"><div class="t"><b>'+esc(g.name)+'</b><span class="amt">'+rm0(g.saved)+' / '+rm0(g.target)+'</span>'+
+      '<button class="x" data-gedit="'+g.id+'" aria-label="修改">'+ICON_EDIT+'</button><button class="x" data-gdel="'+g.id+'" aria-label="删除">×</button></div>'+
+      '<div class="bar"><i style="width:'+pct+'%"></i></div><div class="s">'+Math.floor(pct)+'% · '+eta+'</div></div>';
+  }).join(""):'<div class="empty">设一个目标，让每次忍住都有意义</div>';
+}
+function goalForm(on,g){
+  goalEditId=on?String(g.id):null;
+  $("gtitle").textContent=on?"修改目标":"忍住的目标";$("gadd").textContent=on?"保存修改":"添加目标";$("gcancel").hidden=!on;
+  $("gn").value=on?g.name:"";$("gt").value=on?g.target:"";$("gmsg").textContent="";
+}
+$("gcancel").addEventListener("click",function(){goalForm(false)});
+$("gadd").addEventListener("click",function(){
+  var name=$("gn").value.trim(),t=parseFloat($("gt").value);
+  if(!name||!(t>0)){$("gmsg").textContent="请填目标名称和金额";return}
+  var editing=goalEditId!==null,old=editing?goals().filter(function(g){return String(g.id)===goalEditId})[0]:null;
+  if(editing&&!old){goalForm(false);$("gmsg").textContent="这个目标已经不存在了";return}
+  var rec={id:editing?old.id:Date.now(),date:editing?old.created:today(),item:name,cat:"Goal:0",amt:r2(t)};
+  S.expenses=S.expenses.filter(function(x){return x.id!==rec.id});S.expenses.push(rec);queue({op:"add",row:rec});syncUI();
+  goalForm(false);goalView();toast(editing?"目标已修改":"目标已添加",name+" · "+rm0(rec.amt));
+});
+$("goalList").addEventListener("click",function(e){
+  var b=e.target.closest&&e.target.closest("button");if(!b)return;
+  var ed=b.getAttribute("data-gedit"),del=b.getAttribute("data-gdel");
+  if(ed){var g=goals().filter(function(x){return String(x.id)===ed})[0];if(g){goalForm(true,g);window.scrollTo({top:$("goalCard").offsetTop-10,behavior:"smooth"})}}
+  else if(del){
+    if(b.getAttribute("data-sure")!=="1"){b.setAttribute("data-sure","1");b.textContent="再按确认";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-sure");b.innerHTML="×"}},3000);return}
+    if(goalEditId===del)goalForm(false);
+    S.expenses=S.expenses.filter(function(x){return String(x.id)!==del});queue({op:"del",id:+del});syncUI();goalView();
+  }
+});
+
 function saveView(){
+  goalView();
   var rows=S.expenses.filter(function(x){return x.cat===SKIP}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id});
   var tot=0,now=0,thisM=0,i=(+S.set.rate||0)/100/12,cm=today().slice(0,7);
   rows.forEach(function(x){tot+=x.amt;now+=x.amt*Math.pow(1+i,monthsBetween(x.date));if(x.date.slice(0,7)===cm)thisM+=x.amt});
@@ -756,6 +852,104 @@ $("dadd").addEventListener("click",function(){
   debtView();
 });
 
+/* ---- recurring monthly expenses (每月固定支出) ----
+   template row (hidden from spending): cat "Recur:<day>:<category>:<last generated YYYY-MM or ->:<1 active|0 paused>",
+                item = name, amt = amount, date = first day of the start month
+   generated expense: an ordinary expense with a deterministic id (template id + month), so two devices that
+   both generate the same month produce the same record. Ids stay below 1e15 (Google Sheets keeps 15 digits). */
+var RECUR_RE=/^Recur:(\d{1,2}):([^:]+):(\d{4}-\d{2}|-):([01])$/;
+function p2(n){return (n<10?"0":"")+n}
+function monthIdx(ym){return (+ym.slice(0,4)-2020)*12+(+ym.slice(5,7))-1}
+function idxToYm(i){return (2020+Math.floor(i/12))+"-"+p2(i%12+1)}
+function daysInMonth(ym){return new Date(+ym.slice(0,4),+ym.slice(5,7),0).getDate()}
+function recurId(tid,idx){return 2e14+Math.max(0,tid-1.7e12)*1000+idx}
+function recurCat(t,last,active){return "Recur:"+t.day+":"+t.cat+":"+(last||"-")+":"+(active?1:0)}
+function recurs(){
+  var out=[];
+  S.expenses.forEach(function(x){var m=RECUR_RE.exec(x.cat);if(m)out.push({id:x.id,name:x.item,amt:x.amt,day:+m[1],cat:m[2],last:m[3]==="-"?"":m[3],active:m[4]==="1",start:x.date.slice(0,7)})});
+  return out;
+}
+function recurNext(t){
+  var i=t.last?monthIdx(t.last)+1:monthIdx(t.start),ym=idxToYm(i);
+  return ym+"-"+p2(Math.min(t.day,daysInMonth(ym)));
+}
+function recurTick(){
+  var now=today(),nowIdx=monthIdx(now.slice(0,7)),dNow=+now.slice(8,10),made=0,have={};
+  S.expenses.forEach(function(x){have[x.id]=1});
+  recurs().forEach(function(t){
+    if(!t.active)return;
+    var startIdx=monthIdx(t.start),from=t.last?monthIdx(t.last)+1:startIdx;
+    if(from<startIdx)from=startIdx;
+    if(from<nowIdx-11)from=nowIdx-11;                      /* catch up at most 12 months */
+    var done=-1;
+    for(var i=from;i<=nowIdx;i++){
+      var ym=idxToYm(i),day=Math.min(t.day,daysInMonth(ym));
+      if(i===nowIdx&&dNow<day)break;                       /* not due yet this month */
+      var id=recurId(t.id,i);
+      if(!have[id]){var rec={id:id,date:ym+"-"+p2(day),item:t.name,cat:t.cat,amt:t.amt};S.expenses.push(rec);S.pending.push({op:"add",row:rec});have[id]=1;made++}
+      done=i;
+    }
+    if(done>=0&&(!t.last||monthIdx(t.last)<done)){
+      var tr={id:t.id,date:t.start+"-01",item:t.name,cat:recurCat(t,idxToYm(done),true),amt:t.amt};
+      S.expenses=S.expenses.filter(function(x){return x.id!==t.id});S.expenses.push(tr);S.pending.push({op:"add",row:tr});
+    }
+  });
+  if(made){queue();syncUI();toast("已自动记账 "+made+" 笔固定支出","每月固定支出");recurView();listView()}
+  return made;
+}
+function recurView(){
+  var ts=recurs().sort(function(a,b){return a.day-b.day||a.id-b.id}),tot=0;
+  ts.forEach(function(t){if(t.active)tot+=t.amt});
+  $("recList").innerHTML=ts.length?ts.map(function(t){
+    return '<div class="rrow'+(t.active?'':' off')+'"><b>'+esc(t.name)+'</b><div class="amt">'+rm(t.amt)+'</div><div class="info"><span class="tag">'+esc(t.cat)+'</span> 每月 '+t.day+' 号 · '+(t.active?'下次 '+recurNext(t):'已暂停')+'</div><div class="acts">'+
+      '<button class="x" data-rpause="'+t.id+'" aria-label="'+(t.active?"暂停":"恢复")+'" title="'+(t.active?"暂停":"恢复")+'">'+(t.active?"⏸":"▶")+'</button>'+
+      '<button class="x" data-redit="'+t.id+'" aria-label="修改">'+ICON_EDIT+'</button>'+
+      '<button class="x" data-rdel="'+t.id+'" aria-label="删除">×</button></div></div>';
+  }).join(""):'<div class="empty">还没有固定支出</div>';
+  $("recTotal").textContent=ts.length?("启用中的固定支出合计：每月 "+rm(tot)):"";
+}
+var recEditId=null;
+function recForm(on,t){
+  recEditId=on?String(t.id):null;
+  $("rtitle").textContent=on?"修改固定支出":"每月固定支出";$("radd").textContent=on?"保存修改":"添加";$("rcancel").hidden=!on;$("rs").disabled=on;
+  if(on){$("rn").value=t.name;$("ra").value=t.amt;$("rd").value=t.day;$("rc").value=t.cat;$("rs").value=t.start}
+  else{$("rn").value="";$("ra").value="";$("rd").value=1;$("rs").value=idxToYm(monthIdx(today().slice(0,7))+1)}
+  $("rmsg").textContent="";
+}
+$("rcancel").addEventListener("click",function(){recForm(false)});
+$("radd").addEventListener("click",function(){
+  var name=$("rn").value.trim(),a=parseFloat($("ra").value),d=parseInt($("rd").value,10),cat=$("rc").value,st=$("rs").value||idxToYm(monthIdx(today().slice(0,7))+1);
+  if(!name||!(a>0)){$("rmsg").textContent="请填名称和金额";return}
+  if(!(d>=1&&d<=31)){$("rmsg").textContent="每月几号请填 1 到 31";return}
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(st)){$("rmsg").textContent="开始月份格式请填 年-月，例如 2026-11";return}
+  var editing=recEditId!==null,old=editing?recurs().filter(function(t){return String(t.id)===recEditId})[0]:null;
+  if(editing&&!old){recForm(false);$("rmsg").textContent="这条固定支出已经不存在了";return}
+  var t={id:editing?old.id:Date.now(),day:d,cat:cat};
+  var rec={id:t.id,date:(editing?old.start:st)+"-01",item:name,cat:recurCat(t,editing?old.last:"",editing?old.active:true),amt:r2(a)};
+  S.expenses=S.expenses.filter(function(x){return x.id!==t.id});S.expenses.push(rec);queue({op:"add",row:rec});syncUI();
+  recForm(false);toast(editing?"固定支出已修改":"固定支出已添加",name+" · 每月 "+d+" 号 · "+rm(r2(a)));
+  recurTick();recurView();
+});
+$("recList").addEventListener("click",function(e){
+  var b=e.target.closest&&e.target.closest("button");if(!b)return;
+  var pa=b.getAttribute("data-rpause"),ed=b.getAttribute("data-redit"),del=b.getAttribute("data-rdel");
+  var find=function(id){return recurs().filter(function(t){return String(t.id)===id})[0]};
+  if(ed){var t=find(ed);if(t)recForm(true,t)}
+  else if(pa){
+    var t2=find(pa);if(!t2)return;
+    var last=t2.last;
+    if(!t2.active){                                                  /* resuming: do not back-fill the paused months */
+      var nowIdx=monthIdx(today().slice(0,7));last=idxToYm(+today().slice(8,10)>=Math.min(t2.day,daysInMonth(today().slice(0,7)))?nowIdx:nowIdx-1);
+    }
+    var rec={id:t2.id,date:t2.start+"-01",item:t2.name,cat:recurCat(t2,last,!t2.active),amt:t2.amt};
+    S.expenses=S.expenses.filter(function(x){return x.id!==t2.id});S.expenses.push(rec);queue({op:"add",row:rec});syncUI();recurView();
+  }else if(del){
+    if(b.getAttribute("data-sure")!=="1"){b.setAttribute("data-sure","1");b.textContent="再按确认";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-sure");b.innerHTML="×"}},3000);return}
+    if(recEditId===del)recForm(false);
+    S.expenses=S.expenses.filter(function(x){return String(x.id)!==del});queue({op:"del",id:+del});syncUI();recurView();
+  }
+});
+
 /* ---- think ---- */
 var RATES=[3,5,7];
 function calc(){
@@ -818,7 +1012,7 @@ function sumView(){
   if(av>0){var o=fv(av,"month",S.set.rate,10);b.hidden=false;
     b.innerHTML='这个月「不必要」花了 <b>'+rm0(av)+'</b>。如果每个月都省下这个数，存 10 年（'+S.set.rate+'%）≈ <b>'+rm0(o.fv)+'</b>，现值约 '+rm0(pv(o.fv,10))+'。'}
   else b.hidden=true;
-  cmpView(m);
+  cmpView(m);recurView();
   $("budTitle2").textContent=m+" 预算";renderBudget($("budList2"),$("budCard2"),budgetRows(m));
 }
 function prevMonth(m,k){var y=+m.slice(0,4),n=+m.slice(5,7)-(k===undefined?1:k);while(n<1){n+=12;y--}return y+"-"+String(n).padStart(2,"0")}
@@ -908,10 +1102,13 @@ $("sw").value=S.set.wage||"";$("sd").value=S.set.ded;$("si").value=S.set.infl;
 $("tr").value="";T.years=S.set.years||10;
 $("bcs").innerHTML=CATS.map(function(c){return '<option>'+c+'</option>'}).join("");
 yearChips();listView();budSetView();
+$("rc").innerHTML=CATS.map(function(c){return '<option>'+c+'</option>'}).join("");
+recForm(false);
+recurTick();
 syncUI();
 syncNow();
-window.addEventListener("online",syncNow);
-document.addEventListener("visibilitychange",function(){if(!document.hidden)syncNow()});
+window.addEventListener("online",function(){recurTick();syncNow()});
+document.addEventListener("visibilitychange",function(){if(!document.hidden){recurTick();syncNow()}});
 if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0)navigator.serviceWorker.register("sw.js").catch(function(){});
 })();
 </script>
