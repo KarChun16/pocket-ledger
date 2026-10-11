@@ -108,7 +108,7 @@ details.debt summary .st{display:block;font-size:13px}
 details.debt .bar{margin:10px 0 0}
 .cmp .v small.near{color:var(--warn);font-weight:600}.cmp .v small.over{color:var(--bad);font-weight:600}
 .prow{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:.5px solid var(--line);font-size:14px}
-.prow .d{width:96px;color:var(--muted);flex:none;white-space:nowrap;font-size:13px}.prow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .d{width:96px;color:var(--muted);flex:none;white-space:nowrap;font-size:13px}.prow .n{flex:1;min-width:0;overflow-wrap:anywhere}.prow .n small{display:block;margin:0}
 .brow{display:flex;align-items:center;gap:8px;margin:8px 0}.brow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brow input{width:110px}
 .cat{margin:12px 0}
 .cat .t{display:flex;justify-content:space-between;font-size:15px}
@@ -206,11 +206,13 @@ details.debt .bar{margin:10px 0 0}
     <div class="card">
       <h2>新增欠款</h2>
       <div class="grid">
-        <div class="full"><label for="dd">类型</label><select id="dd"><option value="owe">我欠别人</option><option value="lent">别人欠我</option></select></div>
+        <div><label for="dd">类型</label><select id="dd"><option value="owe">我欠别人</option><option value="lent">别人欠我</option></select></div>
+        <div><label for="dc">币种</label><select id="dc"><option>MYR</option><option>NTD</option><option>SGD</option><option>USD</option></select></div>
         <div class="full"><label for="dn">名称 / 对象</label><input id="dn" type="text" placeholder="例如：信用卡、借给阿明" maxlength="60"></div>
-        <div><label for="da">金额 (RM)</label><input id="da" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div><label for="da" id="daLbl">金额 (MYR)</label><input id="da" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
         <div><label for="ds">开始日期</label><input id="ds" type="date"></div>
         <div class="full"><label for="du">到期日（可不填）</label><input id="du" type="date"></div>
+        <div class="full" id="drRow" hidden><label for="dr">参考汇率（1 RM = ? 外币，可不填，只用来估算 RM）</label><input id="dr" type="number" inputmode="decimal" step="0.0001" min="0" placeholder="例如 7.89"></div>
         <div class="full" id="dspRow"><label class="chk"><input type="checkbox" id="dsp" checked>还款算进支出</label></div>
       </div>
       <div class="row" style="margin-top:14px"><button class="btn grow" id="dadd">添加</button></div>
@@ -301,7 +303,7 @@ function spent(){
   var by=debts().by,out=[];
   S.expenses.forEach(function(x){
     if(x.cat===SKIP||x.cat.indexOf("Debt:")===0)return;
-    if(x.cat.indexOf("DebtPay:")===0){var d=by[x.cat.slice(8)];if(d&&d.dir==="owe"&&d.spend)out.push({id:x.id,date:x.date,item:"还款："+d.name,cat:"还款",amt:x.amt,ro:true});return}
+    if(x.cat.indexOf("DebtPay:")===0){var pr=payRef(x.cat),d=pr&&by[pr.id];if(d&&d.dir==="owe"&&d.spend)out.push({id:x.id,date:x.date,item:"还款："+d.name,cat:"还款",amt:x.amt,ro:true});return}
     out.push(x);
   });
   return out;
@@ -541,18 +543,30 @@ $("slist").addEventListener("click",function(e){
 
 /* ---- debts (欠款) ----
    Stored as Expenses rows, so sync / offline queue / backup all work unchanged:
-   debt    cat "Debt:<owe|lent>:<1|0 counts as spending>:<due YYYY-MM-DD or ->", item = name, amt = principal, date = start
-   payment cat "DebtPay:<debtId>", item = note, amt = amount, date = payment date */
-var DEBT_RE=/^Debt:(owe|lent):([01]):(\d{4}-\d{2}-\d{2}|-)$/;
+   debt    cat "Debt:<owe|lent>:<1|0 counts as spending>:<due YYYY-MM-DD or ->[:<CUR>[:<reference rate>]]"
+           item = name, amt = principal in CUR (RM when CUR is omitted), date = start
+   payment cat "DebtPay:<debtId>[:<rate>]", item = note, date = payment date,
+           amt = what you paid in RM; for a foreign debt rate = CUR per 1 RM and the debt shrinks by amt * rate */
+var DEBT_RE=/^Debt:(owe|lent):([01]):(\d{4}-\d{2}-\d{2}|-)(?::([A-Z]{3})(?::(\d+(?:\.\d+)?))?)?$/;
+var PAY_RE=/^DebtPay:(\d+)(?::(\d+(?:\.\d+)?))?$/;
+var CURS=["MYR","NTD","SGD","USD"];
 var openDebts={};
+function payRef(cat){var m=PAY_RE.exec(cat);return m?{id:m[1],rate:m[2]?+m[2]:0}:null}
+function r2(n){return Math.round(n*100)/100}
+function cm(cur,n){return cur==="MYR"?rm(n):cur+" "+Number(n).toLocaleString("en-MY",{minimumFractionDigits:0,maximumFractionDigits:2})}
 function daysUntil(due){return Math.round((new Date(due+"T00:00:00")-new Date(today()+"T00:00:00"))/864e5)}
 function debts(){
   var list=[],by={};
-  S.expenses.forEach(function(x){var m=DEBT_RE.exec(x.cat);if(m){var d={id:x.id,name:x.item,dir:m[1],spend:m[2]==="1",due:m[3]==="-"?"":m[3],start:x.date,principal:x.amt,pays:[],paid:0};list.push(d);by[String(x.id)]=d}});
-  S.expenses.forEach(function(x){if(x.cat.indexOf("DebtPay:")===0){var d=by[x.cat.slice(8)];if(d){d.pays.push(x);d.paid+=x.amt}}});
+  S.expenses.forEach(function(x){var m=DEBT_RE.exec(x.cat);if(m){var d={id:x.id,name:x.item,dir:m[1],spend:m[2]==="1",due:m[3]==="-"?"":m[3],cur:m[4]||"MYR",refRate:m[5]?+m[5]:0,start:x.date,principal:x.amt,pays:[],paid:0};list.push(d);by[String(x.id)]=d}});
+  S.expenses.forEach(function(x){if(x.cat.indexOf("DebtPay:")===0){var pr=payRef(x.cat),d=pr&&by[pr.id];if(d){
+    var native=d.cur==="MYR"?x.amt:r2(x.amt*pr.rate);
+    d.pays.push({id:x.id,date:x.date,item:x.item,rm:x.amt,rate:pr.rate,native:native});d.paid+=native}}});
   list.forEach(function(d){
     d.pays.sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:a.id-b.id});
-    d.left=Math.max(0,Math.round((d.principal-d.paid)*100)/100);d.settled=d.left<0.005;d.days=d.due?daysUntil(d.due):null;
+    d.left=Math.max(0,r2(d.principal-d.paid));d.settled=d.left<0.005;d.days=d.due?daysUntil(d.due):null;
+    var last=d.pays.filter(function(q){return q.rate>0}).pop();
+    d.rate=d.cur==="MYR"?0:(last?last.rate:d.refRate);              /* CUR per 1 RM, for RM estimates only */
+    d.leftRM=d.cur==="MYR"?d.left:(d.rate>0?r2(d.left/d.rate):null);
   });
   list.by=by;return list;
 }
@@ -569,18 +583,23 @@ function debtAlertView(){
   $("debtAlert").hidden=!due.length;
   $("debtAlertList").innerHTML=due.map(function(d){
     var st=debtStatus(d);
-    return '<div class="cmp"><span class="n">'+(d.dir==="owe"?"我欠 ":"欠我 ")+esc(d.name)+'</span><span class="v">'+rm0(d.left)+'<small class="st '+st.c+'">'+st.t+'</small></span></div>';
+    return '<div class="cmp"><span class="n">'+(d.dir==="owe"?"我欠 ":"欠我 ")+esc(d.name)+'</span><span class="v">'+(d.cur==="MYR"?rm0(d.left):cm(d.cur,d.left))+'<small class="st '+st.c+'">'+st.t+'</small></span></div>';
   }).join("");
 }
 $("debtGo").addEventListener("click",function(){tab("debt")});
 function debtItem(d){
-  var st=debtStatus(d),owe=d.dir==="owe",pct=d.principal>0?Math.min(100,d.paid/d.principal*100):100;
-  var pays=d.pays.map(function(x){return '<div class="prow"><span class="d">'+x.date+'</span><span class="n">'+esc(x.item)+'</span><span class="amt">'+rm(x.amt)+'</span><button class="x" data-pdel="'+x.id+'" aria-label="删除这笔">×</button></div>'}).join("");
-  return '<details class="debt" data-did="'+d.id+'"'+(openDebts[d.id]?" open":"")+'><summary><div class="m"><b>'+esc(d.name)+'</b><span class="st '+st.c+'">'+st.t+'</span></div><div class="amt">'+(d.settled?rm0(d.principal):rm(d.left))+'</div></summary>'+
+  var st=debtStatus(d),owe=d.dir==="owe",fx=d.cur!=="MYR",pct=d.principal>0?Math.min(100,d.paid/d.principal*100):100;
+  var pays=d.pays.map(function(q){
+    return '<div class="prow"><span class="d">'+q.date+'</span><span class="n">'+esc(q.item)+(fx?'<small class="msg"> '+rm(q.rm)+' × '+q.rate+' = '+cm(d.cur,q.native)+'</small>':'')+'</span><span class="amt">'+(fx?cm(d.cur,q.native):rm(q.rm))+'</span><button class="x" data-pdel="'+q.id+'" aria-label="删除这笔">×</button></div>';
+  }).join("");
+  var inputs='<div><label>'+(fx?'付了多少 RM':'金额 (RM)')+'</label><input type="number" inputmode="decimal" step="0.01" min="0" data-pamt placeholder="0.00"></div>'+
+    (fx?'<div><label>汇率（1 RM = ? '+d.cur+'）</label><input type="number" inputmode="decimal" step="0.0001" min="0" data-prate value="'+(d.rate||"")+'" placeholder="例如 7.89"></div>':'')+
+    '<div'+(fx?' class="full"':'')+'><label>日期</label><input type="date" data-pdate value="'+today()+'"></div>';
+  return '<details class="debt" data-did="'+d.id+'"'+(openDebts[d.id]?" open":"")+'><summary><div class="m"><b>'+esc(d.name)+'</b><span class="st '+st.c+'">'+st.t+'</span></div><div class="amt">'+(d.settled?cm(d.cur,d.principal):cm(d.cur,d.left))+(fx&&!d.settled&&d.leftRM!==null?'<small class="msg" style="display:block;text-align:right;margin:0">≈ '+rm0(d.leftRM)+'</small>':'')+'</div></summary>'+
     '<div class="bar"><i style="width:'+pct+'%"></i></div>'+
-    '<p class="msg">本金 '+rm(d.principal)+' · 已'+(owe?"还":"收")+' '+rm(d.paid)+' · 开始 '+d.start+(d.due?' · 到期 '+d.due:'')+(owe&&d.spend?' · 还款计入支出':'')+'</p>'+
+    '<p class="msg">本金 '+cm(d.cur,d.principal)+' · 已'+(owe?"还":"收")+' '+cm(d.cur,d.paid)+' · 开始 '+d.start+(d.due?' · 到期 '+d.due:'')+(owe&&d.spend?' · 还款计入支出':'')+(fx?' · 估算 RM 用最近一次汇率':'')+'</p>'+
     pays+
-    (d.settled?'':'<div class="grid" style="margin-top:10px"><div><label>金额 (RM)</label><input type="number" inputmode="decimal" step="0.01" min="0" data-pamt placeholder="0.00"></div><div><label>日期</label><input type="date" data-pdate value="'+today()+'"></div></div>'+
+    (d.settled?'':'<div class="grid" style="margin-top:10px">'+inputs+'</div><div class="msg" data-ppreview></div>'+
       '<button class="btn small" data-pay="'+d.id+'" style="margin-top:10px">'+(owe?"记一笔还款":"记一笔收款")+'</button><div class="msg" data-pmsg></div>')+
     '<div style="margin-top:10px"><button class="btn ghost small" data-ddel="'+d.id+'">删除这笔欠款</button></div></details>';
 }
@@ -594,39 +613,57 @@ function debtView(){
   var ae=document.activeElement;
   if(ae&&ae.tagName==="INPUT"&&$("dlist").contains(ae))return;   /* never wipe what is being typed */
   var all=debts(),owe=all.filter(function(d){return d.dir==="owe"}),lent=all.filter(function(d){return d.dir==="lent"});
-  var sum=function(l){return l.reduce(function(t,d){return t+(d.settled?0:d.left)},0)};
+  var tile=function(l){
+    var rmSum=0,fx={};
+    l.forEach(function(d){if(d.settled)return;if(d.cur==="MYR")rmSum+=d.left;else fx[d.cur]=(fx[d.cur]||0)+d.left});
+    return rm0(rmSum)+Object.keys(fx).map(function(c){return '<small style="display:block;color:var(--muted)">+ '+cm(c,fx[c])+'</small>'}).join("");
+  };
   var over=all.filter(function(d){return !d.settled&&d.days!==null&&d.days<0}).length;
-  $("dstat").innerHTML='<div><small>我欠（剩余）</small><strong class="warnv">'+rm0(sum(owe))+'</strong></div><div><small>欠我（剩余）</small><strong>'+rm0(sum(lent))+'</strong></div><div><small>逾期</small><strong class="'+(over?"warnv":"")+'">'+over+' 笔</strong></div>';
+  $("dstat").innerHTML='<div><small>我欠（剩余）</small><strong class="warnv">'+tile(owe)+'</strong></div><div><small>欠我（剩余）</small><strong>'+tile(lent)+'</strong></div><div><small>逾期</small><strong class="'+(over?"warnv":"")+'">'+over+' 笔</strong></div>';
   $("dlist").innerHTML=debtSection("我欠别人的",owe)+debtSection("别人欠我的",lent);
 }
 function debtDel(ids){S.expenses=S.expenses.filter(function(x){return ids.indexOf(String(x.id))<0});ids.forEach(function(id){S.pending.push({op:"del",id:+id})});queue()}
 $("dlist").addEventListener("toggle",function(e){var id=e.target.getAttribute&&e.target.getAttribute("data-did");if(id)openDebts[id]=e.target.open},true);
+$("dlist").addEventListener("input",function(e){   /* live conversion preview for foreign debts */
+  var det=e.target.closest&&e.target.closest("details.debt");if(!det)return;
+  var a=parseFloat((det.querySelector("[data-pamt]")||{}).value),r=parseFloat((det.querySelector("[data-prate]")||{}).value),pv=det.querySelector("[data-ppreview]"),d=debts().by[det.getAttribute("data-did")];
+  if(pv&&d&&d.cur!=="MYR")pv.textContent=(a>0&&r>0)?("折合 "+cm(d.cur,r2(a*r))+"，还完后剩 "+cm(d.cur,Math.max(0,r2(d.left-a*r)))):"";
+});
 $("dlist").addEventListener("click",function(e){
   var b=e.target.closest&&e.target.closest("button");if(!b)return;
   var pay=b.getAttribute("data-pay"),pdel=b.getAttribute("data-pdel"),ddel=b.getAttribute("data-ddel");
   if(pay){
     var det=b.closest("details"),d=debts().by[pay],msg=det.querySelector("[data-pmsg]");
-    var a=parseFloat(det.querySelector("[data-pamt]").value),dt=det.querySelector("[data-pdate]").value||today();
-    if(!d)return;if(!(a>0)){msg.textContent="请填金额";return}
-    var note="";if(a>d.left+0.004){a=d.left;note="（超过剩余，已按剩余 "+rm(a)+" 记录）"}
-    var rec={id:Date.now(),date:dt,item:d.dir==="owe"?"还款":"收款",cat:"DebtPay:"+pay,amt:Math.round(a*100)/100};
+    if(!d)return;
+    var fx=d.cur!=="MYR",a=parseFloat(det.querySelector("[data-pamt]").value),dt=det.querySelector("[data-pdate]").value||today();
+    var rate=fx?parseFloat(det.querySelector("[data-prate]").value):0;
+    if(!(a>0)){msg.textContent="请填金额";return}
+    if(fx&&!(rate>0)){msg.textContent="请填汇率（1 RM = 多少 "+d.cur+"）";return}
+    var native=fx?r2(a*rate):a,note="";
+    if(native>d.left+0.004){native=d.left;a=fx?r2(native/rate):d.left;note="（超过剩余，已按剩余记录：RM "+a.toFixed(2)+"）"}
+    var rec={id:Date.now(),date:dt,item:d.dir==="owe"?"还款":"收款",cat:"DebtPay:"+pay+(fx?":"+rate:""),amt:r2(a)};
     S.expenses.push(rec);queue({op:"add",row:rec});syncUI();debtView();
     var m2=document.querySelector('[data-did="'+pay+'"] [data-pmsg]');if(m2)m2.textContent="已记录 ✓"+note;
   }else if(pdel){S.expenses=S.expenses.filter(function(x){return String(x.id)!==pdel});queue({op:"del",id:+pdel});syncUI();debtView()}
   else if(ddel){
     if(b.getAttribute("data-sure")!=="1"){b.setAttribute("data-sure","1");b.textContent="再按一次确认删除（连同还款记录）";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-sure");b.textContent="删除这笔欠款"}},3000);return}
-    var ids=[ddel].concat(S.expenses.filter(function(x){return x.cat==="DebtPay:"+ddel}).map(function(x){return String(x.id)}));
+    var ids=[ddel].concat(S.expenses.filter(function(x){var pr=payRef(x.cat);return pr&&pr.id===ddel}).map(function(x){return String(x.id)}));
     delete openDebts[ddel];debtDel(ids);syncUI();debtView();
   }
 });
-$("dd").addEventListener("change",function(){$("dspRow").hidden=this.value!=="owe"});
+function debtFormMode(){
+  var dir=$("dd").value,cur=$("dc").value,fx=cur!=="MYR";
+  $("dspRow").hidden=dir!=="owe";$("drRow").hidden=!fx;
+  $("daLbl").textContent="金额 ("+cur+")";
+}
+$("dd").addEventListener("change",debtFormMode);$("dc").addEventListener("change",debtFormMode);
 $("dadd").addEventListener("click",function(){
-  var dir=$("dd").value,name=$("dn").value.trim(),a=parseFloat($("da").value),st=$("ds").value||today(),du=$("du").value;
+  var dir=$("dd").value,cur=$("dc").value,name=$("dn").value.trim(),a=parseFloat($("da").value),st=$("ds").value||today(),du=$("du").value,rt=parseFloat($("dr").value);
   if(!name||!(a>0)){$("dmsg").textContent="请填名称和金额";return}
-  var cat="Debt:"+dir+":"+(dir==="owe"&&$("dsp").checked?"1":"0")+":"+(du||"-");
-  var rec={id:Date.now(),date:st,item:name,cat:cat,amt:Math.round(a*100)/100};
+  var cat="Debt:"+dir+":"+(dir==="owe"&&$("dsp").checked?"1":"0")+":"+(du||"-")+(cur!=="MYR"?":"+cur+(rt>0?":"+rt:""):"");
+  var rec={id:Date.now(),date:st,item:name,cat:cat,amt:r2(a)};
   S.expenses.push(rec);queue({op:"add",row:rec});syncUI();
-  $("dn").value="";$("da").value="";$("du").value="";$("dmsg").textContent="已添加 ✓";
+  $("dn").value="";$("da").value="";$("du").value="";$("dr").value="";$("dmsg").textContent="已添加 ✓";
   setTimeout(function(){$("dmsg").textContent=""},1800);
   debtView();
 });
