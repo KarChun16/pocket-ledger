@@ -106,7 +106,7 @@ svg{width:100%;height:auto;display:block}
         <div class="full"><label for="fc">分类</label><select id="fc"></select></div>
       </div>
       <div id="liveHint" class="hint" hidden></div>
-      <div class="row" style="margin-top:12px"><button class="btn" id="add">记下来</button><span class="msg" id="addMsg"></span></div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="add">记下来</button><button class="btn ghost" id="cancelEdit" hidden>取消修改</button><span class="msg" id="addMsg"></span></div>
     </div>
     <div class="card">
       <div class="row" style="justify-content:space-between;margin-bottom:6px">
@@ -279,12 +279,14 @@ function listView(){
     return '<div class="item"><div class="d">'+x.date.slice(5)+'</div><div class="m"><b>'+esc(x.item)+'</b><span class="tag'+(av?' av':'')+'">'+esc(x.cat)+'</span></div>'+
       '<div class="amt">'+rm(x.amt)+'</div>'+
       (av?'<button class="btn ghost small" data-think="'+x.id+'" title="如果没买">💡</button>':'')+
+      '<button class="x" data-edit="'+x.id+'" aria-label="修改" title="修改">✎</button>'+
       '<button class="x" data-del="'+x.id+'" aria-label="删除">×</button></div>';
   }).join("");
 }
 $("list").addEventListener("click",function(e){
-  var d=e.target.getAttribute("data-del"),t=e.target.getAttribute("data-think");
-  if(d){S.expenses=S.expenses.filter(function(x){return String(x.id)!==d});queue({op:"del",id:+d});listView();syncUI();}
+  var d=e.target.getAttribute("data-del"),t=e.target.getAttribute("data-think"),ed=e.target.getAttribute("data-edit");
+  if(ed){var r=S.expenses.filter(function(y){return String(y.id)===ed})[0];if(r)startEdit(r)}
+  if(d){if(editId===d)endEdit();S.expenses=S.expenses.filter(function(x){return String(x.id)!==d});queue({op:"del",id:+d});listView();syncUI();}
   if(t){var x=S.expenses.filter(function(y){return String(y.id)===t})[0];if(x){$("ta").value=x.amt;$("tf").value="once";tab("think");}}
 });
 $("lm").addEventListener("change",listView);
@@ -296,12 +298,29 @@ function hint(){
   h.innerHTML='先停一下：这 <b>'+rm(a)+'</b> 如果存起来，按 '+S.set.rate+'% 放 10 年 ≈ <b>'+rm(r.fv)+'</b>（扣通膨后约 '+rm(pv(r.fv,10))+'）。若是每天都这样买，看「先别买」。';
 }
 $("fa").addEventListener("input",hint);$("fc").addEventListener("change",hint);
+var editId=null;
+function startEdit(r){
+  editId=String(r.id);
+  $("fd").value=r.date;$("fa").value=r.amt;$("fi").value=r.item;
+  if(![].some.call($("fc").options,function(o){return o.value===r.cat}))$("fc").appendChild(new Option(r.cat,r.cat));
+  $("fc").value=r.cat;
+  $("add").textContent="保存修改";$("cancelEdit").hidden=false;$("addMsg").textContent="正在修改这一笔";
+  hint();window.scrollTo({top:0,behavior:"smooth"});
+}
+function endEdit(){
+  editId=null;$("add").textContent="记下来";$("cancelEdit").hidden=true;
+  $("fa").value="";$("fi").value="";$("fd").value=today();$("liveHint").hidden=true;$("addMsg").textContent="";
+}
+$("cancelEdit").addEventListener("click",endEdit);
 $("add").addEventListener("click",function(){
   var a=parseFloat($("fa").value),it=$("fi").value.trim(),d=$("fd").value||today();
   if(!(a>0)||!it){$("addMsg").textContent="请填金额和项目";return}
-  var rec={id:Date.now(),date:d,item:it,cat:$("fc").value,amt:Math.round(a*100)/100};
+  var editing=editId!==null;
+  var rec={id:editing?+editId:Date.now(),date:d,item:it,cat:$("fc").value,amt:Math.round(a*100)/100};
+  if(editing)S.expenses=S.expenses.filter(function(x){return String(x.id)!==editId});
   S.expenses.push(rec);queue({op:"add",row:rec});syncUI();
-  $("fa").value="";$("fi").value="";$("liveHint").hidden=true;$("addMsg").textContent="已记录 ✓";
+  if(editing)endEdit();
+  $("fa").value="";$("fi").value="";$("liveHint").hidden=true;$("addMsg").textContent=editing?"已修改 ✓":"已记录 ✓";
   setTimeout(function(){$("addMsg").textContent=""},1800);
   $("lm").value=d.slice(0,7);listView();
 });
