@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pocket Ledger</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#1f6f5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<style>
+:root{
+  --bg:#f6f3ec;--surface:#fffdf8;--surface2:#efeadf;--ink:#1d2320;--muted:#6b726c;--line:#ddd6c6;
+  --accent:#1f6f5c;--accent-ink:#ffffff;--warn:#b4531f;--warn-bg:#f8e6d9;--good:#1f6f5c;--good-bg:#dcefe8;
+  --c3:#9bb7ad;--c5:#4f9480;--c7:#1f6f5c;--radius:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121614;--surface:#1a201d;--surface2:#232a26;--ink:#e8ece9;--muted:#93a099;--line:#2c3530;
+  --accent:#4fc0a0;--accent-ink:#0b1210;--warn:#f0a070;--warn-bg:#3a2a1f;--good:#4fc0a0;--good-bg:#1b3029;
+  --c3:#3d6a5c;--c5:#3f9a80;--c7:#4fc0a0;}}
+:root[data-theme="dark"]{
+  --bg:#121614;--surface:#1a201d;--surface2:#232a26;--ink:#e8ece9;--muted:#93a099;--line:#2c3530;
+  --accent:#4fc0a0;--accent-ink:#0b1210;--warn:#f0a070;--warn-bg:#3a2a1f;--good:#4fc0a0;--good-bg:#1b3029;
+  --c3:#3d6a5c;--c5:#3f9a80;--c7:#4fc0a0;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 90px}
+h1{font-size:22px;margin:0 0 2px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+nav{display:flex;gap:6px;background:var(--surface2);padding:4px;border-radius:12px;margin-bottom:16px;position:sticky;top:8px;z-index:5}
+nav button{flex:1;border:0;background:transparent;color:var(--muted);padding:9px 6px;border-radius:9px;font:inherit;font-weight:600;cursor:pointer}
+nav button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 11px;min-height:42px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid .full{grid-column:1/-1}
+.btn{border:0;background:var(--accent);color:var(--accent-ink);font:inherit;font-weight:700;padding:11px 16px;border-radius:10px;cursor:pointer;min-height:42px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:6px 10px;min-height:32px;font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hint{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--warn-bg);color:var(--ink);font-size:14px}
+.hint b{color:var(--warn)}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat div{background:var(--surface2);border-radius:10px;padding:10px}
+.stat small{display:block;color:var(--muted);font-size:11px}
+.stat strong{font-size:17px;font-variant-numeric:tabular-nums}
+.warnv{color:var(--warn)}
+.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .d{width:46px;font-size:12px;color:var(--muted);flex:none}
+.item .m{flex:1;min-width:0}
+.item .m b{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:var(--surface2);color:var(--muted)}
+.tag.av{background:var(--warn-bg);color:var(--warn)}
+.amt{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.x{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:18px;padding:4px 8px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:99px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.rates{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rate{border:1px solid var(--line);border-radius:12px;padding:12px 10px;background:var(--surface)}
+.rate.on{border-color:var(--accent);background:var(--good-bg)}
+.rate .p{font-size:12px;color:var(--muted);font-weight:700}
+.rate .fv{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;margin:2px 0}
+.rate .pv{font-size:12px;color:var(--muted)}
+.bar{height:8px;border-radius:99px;background:var(--surface2);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.bar i.av{background:var(--warn)}
+.cat{margin:10px 0}
+.cat .t{display:flex;justify-content:space-between;font-size:13px}
+.big{font-size:14px;line-height:1.7}
+.big b{font-variant-numeric:tabular-nums}
+svg{width:100%;height:auto;display:block}
+.msg{font-size:12px;color:var(--muted);margin-top:6px}
+.empty{color:var(--muted);text-align:center;padding:18px 0;font-size:14px}
+[hidden]{display:none!important}
+@media (max-width:420px){.rates{grid-template-columns:1fr}.stat{grid-template-columns:1fr 1fr}}
+.sync{font-size:12px;color:var(--muted);margin:-10px 0 14px}
+.sync.err{color:var(--warn)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pocket Ledger</h1>
+  <p class="sub">记账 + 「先别买」算一算。数据只存在这台设备的浏览器里。</p>
+  <p class="sync" id="syncBar">未连接 Google Sheet（只存在本机）</p>
+  <nav role="tablist" id="nav">
+    <button role="tab" data-t="log" aria-selected="true">记账</button>
+    <button role="tab" data-t="think" aria-selected="false">先别买</button>
+    <button role="tab" data-t="sum" aria-selected="false">总览</button>
+  </nav>
+
+  <section id="p-log">
+    <div class="card">
+      <h2>新增一笔</h2>
+      <div class="grid">
+        <div><label for="fd">日期</label><input id="fd" type="date"></div>
+        <div><label for="fa">金额 (RM)</label><input id="fa" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div class="full"><label for="fi">项目</label><input id="fi" type="text" placeholder="例如：烟、午餐、Toll" maxlength="60"></div>
+        <div class="full"><label for="fc">分类</label><select id="fc"></select></div>
+      </div>
+      <div id="liveHint" class="hint" hidden></div>
+      <div class="row" style="margin-top:12px"><button class="btn" id="add">记下来</button><span class="msg" id="addMsg"></span></div>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h2 style="margin:0">明细</h2>
+        <select id="lm" style="width:auto;min-height:36px;padding:6px 10px"></select>
+      </div>
+      <div id="list"></div>
+    </div>
+  </section>
+
+  <section id="p-think" hidden>
+    <div class="card">
+      <h2>如果不买，改成存起来投资</h2>
+      <div class="grid">
+        <div><label for="ta">每次金额 (RM)</label><input id="ta" type="number" inputmode="decimal" step="0.01" min="0" placeholder="例如 18"></div>
+        <div><label for="tf">多久一次</label>
+          <select id="tf"><option value="once">只有这一次</option><option value="day">每天</option><option value="week">每周</option><option value="month">每月</option></select></div>
+        <div class="full"><label>存多少年</label>
+          <div class="chips" id="yrs"></div></div>
+        <div><label for="ty">自订年数</label><input id="ty" type="number" inputmode="numeric" min="1" max="60"></div>
+        <div><label for="tr">自订年回报率 (%)</label><input id="tr" type="number" inputmode="decimal" step="0.1" min="0" max="30"></div>
+      </div>
+    </div>
+    <div class="card" id="res"></div>
+    <div class="card"><h2>增长曲线</h2><div id="chart"></div><p class="msg">虚线 = 你实际投入的本金。三条线 = 3% / 5% / 7%。</p></div>
+    <div class="card"><p class="msg" style="margin:0">假设：按月复利，每月月底存入；通膨默认 3%（在「总览」可改）。这是简单估算，不是投资建议，实际回报会波动，也可能亏损。</p></div>
+  </section>
+
+  <section id="p-sum" hidden>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <h2 style="margin:0">本月总览</h2>
+        <select id="sm" style="width:auto;min-height:36px;padding:6px 10px"></select>
+      </div>
+      <div class="stat" id="stat"></div>
+      <div id="cats" style="margin-top:8px"></div>
+      <div id="avBox" class="hint" hidden></div>
+    </div>
+    <div class="card">
+      <h2>设置</h2>
+      <div class="grid">
+        <div><label for="sw">每月净薪水 (RM)</label><input id="sw" type="number" inputmode="decimal" step="0.01" min="0"></div>
+        <div><label for="sd">固定扣除 (%)</label><input id="sd" type="number" inputmode="decimal" step="0.01" min="0" max="100"></div>
+        <div><label for="si">通膨率 (%/年)</label><input id="si" type="number" inputmode="decimal" step="0.1" min="0" max="20"></div>
+      </div>
+      <p class="msg">「不必要」= Smoking、Unnecessary、Drinks。Money Left = 薪水 − 固定扣除 − 总支出。</p>
+    </div>
+    <div class="card">
+      <h2>同步 (Google Sheet)</h2>
+      <p class="msg" style="margin-top:0">填入你个人 Apps Script 的网址和密钥。只保存在这台设备的浏览器里，不会写进代码。</p>
+      <div class="grid">
+        <div class="full"><label for="cu">Web App 网址</label><input id="cu" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
+        <div class="full"><label for="ct">密钥 (token)</label><input id="ct" type="password" autocomplete="off"></div>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="btn small" id="cs">保存并同步</button><button class="btn ghost small" id="cx">断开</button></div>
+      <div class="msg" id="syncMsg"></div>
+    </div>
+    <div class="card">
+      <h2>备份</h2>
+      <p class="msg" style="margin-top:0">换设备或清浏览器数据前，先复制备份文本存起来。</p>
+      <div class="row"><button class="btn ghost small" id="exp">复制 CSV 备份</button><button class="btn ghost small" id="imp">从下面的文字导入</button><button class="btn ghost small" id="clr">清空全部</button></div>
+      <p class="msg">已连接时，导入和清空也会同步到 Sheet（清空 = 删掉 Sheet 里对应的行）。</p>
+      <textarea id="ta2" rows="4" style="margin-top:10px" placeholder="粘贴 CSV：date,item,category,amount"></textarea>
+      <div class="msg" id="bkMsg"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+var CATS=["Food","Drinks","Car","Living spend","Unnecessary","Smoking","Rent","Toll","Dating","Lifestyle","Saving","Investment","Groceries","Health Care","Transport","Donation","Claim","Internet services","Friends","Shopping","Exercise","Snacks","Family"];
+var AVOID={"Smoking":1,"Unnecessary":1,"Drinks":1};
+var KEY="pocketledger.v1";
+var CKEY="pocketledger.cfg";
+var S={expenses:[],set:{wage:0,ded:13.46,infl:3,rate:5,years:10},pending:[],setDirty:false};
+var C={url:"",token:""};
+var T={years:10};
+var cur="log",syncing=false,timer=null,lastErr="",lastOk="";
+
+function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.expenses)S.expenses=o.expenses;if(o&&o.set)for(var k in o.set)S.set[k]=o.set[k];if(o&&o.pending)S.pending=o.pending;S.setDirty=!!(o&&o.setDirty);}}catch(e){}
+  try{var c=localStorage.getItem(CKEY);if(c){var p=JSON.parse(c);C.url=p.url||"";C.token=p.token||"";}}catch(e){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function saveCfg(){try{localStorage.setItem(CKEY,JSON.stringify(C));}catch(e){}}
+
+/* ---- sync: local-first, pending ops are replayed idempotently (add = upsert by id, del by id) ---- */
+function applyOp(op){
+  if(op.op==="add"){S.expenses=S.expenses.filter(function(x){return String(x.id)!==String(op.row.id)});S.expenses.push(op.row)}
+  else if(op.op==="del"){S.expenses=S.expenses.filter(function(x){return String(x.id)!==String(op.id)})}
+}
+function queue(op){if(op)S.pending.push(op);save();clearTimeout(timer);timer=setTimeout(syncNow,600)}
+function syncUI(){
+  var el=$("syncBar"),n=S.pending.length+(S.setDirty?1:0);
+  if(!C.url||!C.token){el.textContent="未连接 Google Sheet（只存在本机）";el.className="sync";return}
+  if(lastErr){el.textContent="同步失败，已存本机"+(n?"（"+n+" 项待同步）":"")+"：稍后会自动重试";el.className="sync err";return}
+  el.className="sync";
+  el.textContent=syncing?"同步中…":(n?n+" 项待同步":(lastOk?"已同步 "+lastOk:"已连接"));
+}
+function fillSettings(){
+  [["sw","wage"],["sd","ded"],["si","infl"]].forEach(function(p){if(document.activeElement!==$(p[0]))$(p[0]).value=p[1]==="wage"?(S.set.wage||""):S.set[p[1]]});
+}
+function syncNow(){
+  if(!C.url||!C.token||syncing||!navigator.onLine)return Promise.resolve();
+  syncing=true;syncUI();
+  var n=S.pending.length,sendSet=S.setDirty,snap=JSON.stringify(S.set);
+  var body={token:C.token,action:"sync",ops:S.pending.slice(0,n)};
+  if(sendSet)body.settings=S.set;
+  var ok=false;
+  return fetch(C.url,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body),redirect:"follow"})
+    .then(function(r){return r.json()})
+    .then(function(res){
+      if(!res||!res.ok)throw new Error(res&&res.error||"error");
+      S.pending.splice(0,n);
+      S.expenses=res.expenses||[];
+      S.pending.forEach(applyOp);
+      if(sendSet){if(JSON.stringify(S.set)===snap)S.setDirty=false}
+      else if(!S.setDirty&&res.settings){for(var k in res.settings)S.set[k]=res.settings[k]}
+      var d=new Date();lastOk=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+      lastErr="";ok=true;save();fillSettings();tab(cur);
+    })
+    .catch(function(e){lastErr=String(e&&e.message||e)})
+    .then(function(){
+      syncing=false;syncUI();
+      if(ok&&(S.pending.length||S.setDirty))queue();
+      else if(!ok&&(S.pending.length||S.setDirty)){clearTimeout(timer);timer=setTimeout(syncNow,30000)}
+    });
+}
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function rm(n){return "RM "+Number(n).toLocaleString("en-MY",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function rm0(n){return "RM "+Math.round(n).toLocaleString("en-MY")}
+function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+
+/* ---- maths: monthly compounding, deposits at month end ---- */
+function perMonth(freq){return freq==="day"?365/12:freq==="week"?52/12:freq==="month"?1:0}
+function fv(amount,freq,rate,years){
+  var n=Math.round(years*12),i=rate/100/12,lump=0,m=0;
+  if(freq==="once")lump=amount;else m=amount*perMonth(freq);
+  var g=Math.pow(1+i,n);
+  var a=lump*g+(i>0?m*(g-1)/i:m*n);
+  return {fv:a,principal:lump+m*n};
+}
+function pv(x,years){return x/Math.pow(1+(+S.set.infl||0)/100,years)}
+
+/* ---- tabs ---- */
+function tab(t){
+  cur=t;
+  ["log","think","sum"].forEach(function(k){$("p-"+k).hidden=k!==t});
+  Array.prototype.forEach.call($("nav").children,function(b){b.setAttribute("aria-selected",b.getAttribute("data-t")===t)});
+  if(t==="think")calc();if(t==="sum")sumView();if(t==="log")listView();
+}
+$("nav").addEventListener("click",function(e){var t=e.target.getAttribute&&e.target.getAttribute("data-t");if(t)tab(t)});
+
+/* ---- log ---- */
+function months(){
+  var s={};S.expenses.forEach(function(x){s[x.date.slice(0,7)]=1});s[today().slice(0,7)]=1;
+  return Object.keys(s).sort().reverse();
+}
+function fillMonths(sel,keep){
+  var cur=keep||sel.value,ms=months();
+  sel.innerHTML=ms.map(function(m){return '<option value="'+m+'">'+m+'</option>'}).join("");
+  sel.value=ms.indexOf(cur)>=0?cur:ms[0];
+}
+function listView(){
+  fillMonths($("lm"));
+  var m=$("lm").value;
+  var rows=S.expenses.filter(function(x){return x.date.slice(0,7)===m}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id});
+  if(!rows.length){$("list").innerHTML='<div class="empty">这个月还没有记录</div>';return}
+  $("list").innerHTML=rows.map(function(x){
+    var av=AVOID[x.cat];
+    return '<div class="item"><div class="d">'+x.date.slice(5)+'</div><div class="m"><b>'+esc(x.item)+'</b><span class="tag'+(av?' av':'')+'">'+esc(x.cat)+'</span></div>'+
+      '<div class="amt">'+rm(x.amt)+'</div>'+
+      (av?'<button class="btn ghost small" data-think="'+x.id+'" title="如果没买">💡</button>':'')+
+      '<button class="x" data-del="'+x.id+'" aria-label="删除">×</button></div>';
+  }).join("");
+}
+$("list").addEventListener("click",function(e){
+  var d=e.target.getAttribute("data-del"),t=e.target.getAttribute("data-think");
+  if(d){S.expenses=S.expenses.filter(function(x){return String(x.id)!==d});queue({op:"del",id:+d});listView();syncUI();}
+  if(t){var x=S.expenses.filter(function(y){return String(y.id)===t})[0];if(x){$("ta").value=x.amt;$("tf").value="once";tab("think");}}
+});
+$("lm").addEventListener("change",listView);
+function hint(){
+  var a=parseFloat($("fa").value),c=$("fc").value,h=$("liveHint");
+  if(!(a>0)||!AVOID[c]){h.hidden=true;return}
+  var r=fv(a,"once",S.set.rate,10);
+  h.hidden=false;
+  h.innerHTML='先停一下：这 <b>'+rm(a)+'</b> 如果存起来，按 '+S.set.rate+'% 放 10 年 ≈ <b>'+rm(r.fv)+'</b>（扣通膨后约 '+rm(pv(r.fv,10))+'）。若是每天都这样买，看「先别买」。';
+}
+$("fa").addEventListener("input",hint);$("fc").addEventListener("change",hint);
+$("add").addEventListener("click",function(){
+  var a=parseFloat($("fa").value),it=$("fi").value.trim(),d=$("fd").value||today();
+  if(!(a>0)||!it){$("addMsg").textContent="请填金额和项目";return}
+  var rec={id:Date.now(),date:d,item:it,cat:$("fc").value,amt:Math.round(a*100)/100};
+  S.expenses.push(rec);queue({op:"add",row:rec});syncUI();
+  $("fa").value="";$("fi").value="";$("liveHint").hidden=true;$("addMsg").textContent="已记录 ✓";
+  setTimeout(function(){$("addMsg").textContent=""},1800);
+  $("lm").value=d.slice(0,7);listView();
+});
+
+/* ---- think ---- */
+var RATES=[3,5,7];
+function calc(){
+  var a=parseFloat($("ta").value),f=$("tf").value,y=T.years;
+  if(!(a>0)){$("res").innerHTML='<div class="empty">输入你想买的金额，看看存起来会变多少</div>';$("chart").innerHTML="";return}
+  var custom=parseFloat($("tr").value);
+  var list=RATES.slice();if(custom>=0&&RATES.indexOf(custom)<0)list.push(custom);
+  var base=fv(a,f,5,y);
+  var html='<h2>存 '+y+' 年，实际会拿到</h2><p class="big" style="margin-top:0">投入本金 <b>'+rm0(base.principal)+'</b>'+(f!=="once"?'（'+rm(a)+' × '+(f==="day"?"每天":f==="week"?"每周":"每月")+'）':'')+'</p><div class="rates">';
+  list.forEach(function(r){
+    var o=fv(a,f,r,y);
+    html+='<div class="rate'+(r===5?' on':'')+'"><div class="p">'+r+'% / 年</div><div class="fv">'+rm0(o.fv)+'</div><div class="pv">赚了 '+rm0(o.fv-o.principal)+'</div><div class="pv">现值 ≈ '+rm0(pv(o.fv,y))+'</div></div>';
+  });
+  html+='</div><p class="msg">「现值」= 扣掉 '+S.set.infl+'% 通膨后，相当于今天的购买力。</p>';
+  var o5=fv(a,f,5,y);
+  html+='<div class="hint">不买的话，这笔钱 '+y+' 年后（5%）≈ <b>'+rm0(o5.fv)+'</b>，今天的购买力约 <b>'+rm0(pv(o5.fv,y))+'</b>。</div>';
+  $("res").innerHTML=html;
+  chart(a,f,y,list);
+}
+function chart(a,f,y,list){
+  var W=640,H=240,L=46,R=10,Tp=12,B=26,pw=W-L-R,ph=H-Tp-B,series=[],max=0;
+  list.forEach(function(r){var pts=[];for(var k=0;k<=y;k++){pts.push(fv(a,f,r,k).fv)}series.push({r:r,p:pts});max=Math.max(max,pts[y])});
+  var prin=[];for(var k=0;k<=y;k++)prin.push(fv(a,f,0,k).fv);
+  if(max<=0)max=1;
+  function X(k){return L+pw*k/y}function Y(v){return Tp+ph*(1-v/max)}
+  var cols={3:"var(--c3)",5:"var(--c5)",7:"var(--c7)"};
+  var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="增长曲线">';
+  for(var g=0;g<=4;g++){var v=max*g/4,yy=Y(v);s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yy+'" y2="'+yy+'" stroke="var(--line)"/><text x="'+(L-6)+'" y="'+(yy+4)+'" font-size="11" fill="var(--muted)" text-anchor="end">'+(v>=1000?Math.round(v/1000)+"k":Math.round(v))+'</text>'}
+  var step=y<=10?1:y<=20?2:5;
+  for(var k=0;k<=y;k+=step){s+='<text x="'+X(k)+'" y="'+(H-8)+'" font-size="11" fill="var(--muted)" text-anchor="middle">'+k+'y</text>'}
+  s+='<polyline fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 4" points="'+prin.map(function(v,k){return X(k)+","+Y(v)}).join(" ")+'"/>';
+  series.forEach(function(o){
+    s+='<polyline fill="none" stroke="'+(cols[o.r]||"var(--warn)")+'" stroke-width="2.5" stroke-linejoin="round" points="'+o.p.map(function(v,k){return X(k)+","+Y(v)}).join(" ")+'"/>';
+  });
+  s+='</svg>';
+  $("chart").innerHTML=s;
+}
+function yearChips(){
+  var ys=[1,5,10,20,30];
+  $("yrs").innerHTML=ys.map(function(y){return '<button class="chip" data-y="'+y+'" aria-pressed="'+(y===T.years)+'">'+y+' 年</button>'}).join("");
+  $("ty").value=ys.indexOf(T.years)>=0?"":T.years;
+}
+$("yrs").addEventListener("click",function(e){var y=e.target.getAttribute("data-y");if(y){T.years=+y;yearChips();calc()}});
+$("ty").addEventListener("input",function(){var y=parseInt(this.value,10);if(y>=1&&y<=60){T.years=y;Array.prototype.forEach.call($("yrs").children,function(b){b.setAttribute("aria-pressed",+b.getAttribute("data-y")===y)});calc()}});
+["ta","tf","tr"].forEach(function(id){$(id).addEventListener("input",calc);$(id).addEventListener("change",calc)});
+
+/* ---- summary ---- */
+function sumView(){
+  fillMonths($("sm"));
+  var m=$("sm").value,rows=S.expenses.filter(function(x){return x.date.slice(0,7)===m});
+  var tot=0,av=0,bc={};
+  rows.forEach(function(x){tot+=x.amt;if(AVOID[x.cat])av+=x.amt;bc[x.cat]=(bc[x.cat]||0)+x.amt});
+  var w=+S.set.wage||0,left=w-w*(+S.set.ded||0)/100-tot;
+  $("stat").innerHTML='<div><small>总支出</small><strong>'+rm0(tot)+'</strong></div><div><small>不必要</small><strong class="warnv">'+rm0(av)+'</strong></div><div><small>Money Left</small><strong>'+(w?rm0(left):"—")+'</strong></div>';
+  var keys=Object.keys(bc).sort(function(a,b){return bc[b]-bc[a]});
+  $("cats").innerHTML=keys.length?keys.map(function(k){
+    return '<div class="cat"><div class="t"><span>'+esc(k)+'</span><span class="amt">'+rm(bc[k])+'</span></div><div class="bar"><i class="'+(AVOID[k]?'av':'')+'" style="width:'+(tot?Math.max(2,bc[k]/tot*100):0)+'%"></i></div></div>';
+  }).join(""):'<div class="empty">这个月还没有记录</div>';
+  var b=$("avBox");
+  if(av>0){var o=fv(av,"month",S.set.rate,10);b.hidden=false;
+    b.innerHTML='这个月「不必要」花了 <b>'+rm0(av)+'</b>。如果每个月都省下这个数，存 10 年（'+S.set.rate+'%）≈ <b>'+rm0(o.fv)+'</b>，现值约 '+rm0(pv(o.fv,10))+'。'}
+  else b.hidden=true;
+}
+$("sm").addEventListener("change",sumView);
+[["sw","wage"],["sd","ded"],["si","infl"]].forEach(function(p){
+  $(p[0]).addEventListener("input",function(){var v=parseFloat(this.value);S.set[p[1]]=isNaN(v)?0:v;S.setDirty=true;queue();syncUI();sumView()});
+});
+
+/* ---- backup ---- */
+function csvCell(s){s=String(s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}
+function parseCSV(t){
+  var rows=[],r=[],c="",q=false;
+  for(var i=0;i<t.length;i++){var ch=t[i];
+    if(q){if(ch==='"'){if(t[i+1]==='"'){c+='"';i++}else q=false}else c+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===','){r.push(c);c=""}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&t[i+1]==='\n')i++;r.push(c);c="";if(r.length>1||r[0])rows.push(r);r=[]}
+    else c+=ch;
+  }
+  r.push(c);if(r.length>1||r[0])rows.push(r);return rows;
+}
+$("exp").addEventListener("click",function(){
+  var t="date,item,category,amount\n"+S.expenses.slice().sort(function(a,b){return a.date<b.date?-1:1}).map(function(x){return [x.date,csvCell(x.item),csvCell(x.cat),x.amt].join(",")}).join("\n");
+  $("ta2").value=t;
+  var done=function(){$("bkMsg").textContent="已复制。把它贴到备忘录或笔记里保存。"};
+  try{navigator.clipboard.writeText(t).then(done,function(){$("ta2").select();$("bkMsg").textContent="请手动复制上面的文字。"})}catch(e){$("ta2").select();$("bkMsg").textContent="请手动复制上面的文字。"}
+});
+$("imp").addEventListener("click",function(){
+  var rows=parseCSV($("ta2").value.trim()),n=0;
+  rows.forEach(function(r,i){
+    if(r.length<4||r[0].toLowerCase()==="date")return;
+    var a=parseFloat(r[3]);if(!/^\d{4}-\d{2}-\d{2}$/.test(r[0])||!(a>=0))return;
+    var rec={id:Date.now()+i,date:r[0],item:r[1],cat:(r[2]||"").trim()||"Unnecessary",amt:a};
+    S.expenses.push(rec);S.pending.push({op:"add",row:rec});n++;
+  });
+  queue();syncUI();$("bkMsg").textContent=n?("导入了 "+n+" 笔"):"没有读到有效的行（格式：date,item,category,amount）";sumView();
+});
+$("clr").addEventListener("click",function(){
+  if(this.getAttribute("data-sure")!=="1"){this.setAttribute("data-sure","1");this.textContent="再按一次确认清空";var b=this;setTimeout(function(){b.removeAttribute("data-sure");b.textContent="清空全部"},3000);return}
+  S.expenses.forEach(function(x){S.pending.push({op:"del",id:x.id})});S.expenses=[];queue();syncUI();this.removeAttribute("data-sure");this.textContent="清空全部";$("bkMsg").textContent="已清空";sumView();
+});
+
+/* ---- sync settings ---- */
+$("cs").addEventListener("click",function(){
+  var u=$("cu").value.trim(),t=$("ct").value.trim();
+  if(!/^https:\/\/script\.google\.com\/macros\/s\/[^\s]+\/exec$/.test(u)||!t){$("syncMsg").textContent="请填 script.google.com 的 /exec 网址和密钥";return}
+  C.url=u;C.token=t;saveCfg();lastErr="";$("syncMsg").textContent="正在同步…";
+  syncNow().then(function(){$("syncMsg").textContent=lastErr?("失败："+lastErr):"已连接并同步 ✓"});
+});
+$("cx").addEventListener("click",function(){C.url="";C.token="";saveCfg();$("cu").value="";$("ct").value="";lastErr="";lastOk="";$("syncMsg").textContent="已断开（本机数据保留）";syncUI()});
+
+/* ---- init ---- */
+load();
+$("fc").innerHTML=CATS.map(function(c){return '<option>'+c+(AVOID[c]?'':'')+'</option>'}).join("");
+$("fd").value=today();$("cu").value=C.url;$("ct").value=C.token;
+$("sw").value=S.set.wage||"";$("sd").value=S.set.ded;$("si").value=S.set.infl;
+$("tr").value="";T.years=S.set.years||10;
+yearChips();listView();
+syncUI();
+syncNow();
+window.addEventListener("online",syncNow);
+document.addEventListener("visibilitychange",function(){if(!document.hidden)syncNow()});
+if("serviceWorker" in navigator&&location.protocol.indexOf("http")===0)navigator.serviceWorker.register("sw.js").catch(function(){});
+})();
+</script>
+</body>
+</html>
