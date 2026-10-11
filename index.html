@@ -142,6 +142,19 @@ details.more>summary::-webkit-details-marker{display:none}
 .fr.sum{font-weight:700}.fr.sum .k{color:var(--ink)}
 .fbig{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
 .fbig.ok{color:var(--good)}.fbig.near{color:var(--warn)}.fbig.over{color:var(--bad)}
+.yr{display:grid;grid-template-columns:34px 1fr auto auto;align-items:center;gap:8px;padding:7px 0;font-size:14px;font-variant-numeric:tabular-nums}
+.yr .mo{color:var(--muted)}.yr .bar{margin:0}.yr .bal{min-width:86px;text-align:right;font-weight:600}
+.yr.head{font-size:12px;color:var(--muted);padding-bottom:2px}.yr.head .bal{font-weight:500}
+.yr.tot{border-top:.5px solid var(--line);margin-top:4px;padding-top:10px;font-weight:700}
+.ybtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+@media print{
+  body.print-year{background:#fff!important;color:#000!important}
+  body.print-year .tabbar,body.print-year .toast,body.print-year #celebrate,body.print-year .sync,body.print-year h1,body.print-year .ybtns,body.print-year #p-log,body.print-year #p-think,body.print-year #p-save,body.print-year #p-debt,body.print-year #p-sum>:not(#yearCard){display:none!important}
+  body.print-year .wrap{padding:0;max-width:none}
+  body.print-year #yearCard{box-shadow:none;border-radius:0;padding:0;margin:0;background:#fff}
+  body.print-year #yearCard>.msg,body.print-year #yearCard #yrText,body.print-year #yearCard #yrSel{display:none!important}
+  body.print-year #yearCard .bar i{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
 .brow{display:flex;align-items:center;gap:8px;margin:8px 0}.brow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brow input{width:110px}
 .cat{margin:12px 0}
 .cat .t{display:flex;justify-content:space-between;font-size:15px}
@@ -401,6 +414,22 @@ details.more>summary::-webkit-details-marker{display:none}
       </div>
       <div class="row" style="margin-top:10px"><button class="btn small" id="cs">保存并同步</button><button class="btn ghost small" id="cx">断开</button></div>
       <div class="msg" id="syncMsg"></div>
+    </div>
+    <div class="card" id="yearCard">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h2 id="yrTitle" style="margin:0">年度报表</h2>
+        <select id="yrSel" style="width:auto;min-height:36px;padding:6px 12px" aria-label="年份"></select>
+      </div>
+      <div id="yrBody"></div>
+      <div class="ybtns">
+        <button class="btn small" id="yrCopy">复制汇总 CSV</button>
+        <button class="btn ghost small" id="yrDlSum">下载汇总</button>
+        <button class="btn ghost small" id="yrDlTx">下载明细</button>
+        <button class="btn ghost small" id="yrPrint">打印 / 存成 PDF</button>
+      </div>
+      <textarea id="yrText" rows="3" readonly hidden style="margin-top:10px" aria-label="汇总 CSV"></textarea>
+      <div class="msg" id="yrMsg"></div>
+      <p class="msg">汇总 = 逐月收入、支出、结余加分类占比，可以直接贴进 Excel 或 Google Sheet。明细 = 这一年的每一笔支出（含自动记账的固定支出和算进支出的还款），用 Excel 打开中文不会乱码。</p>
     </div>
     <div class="card">
       <h2>备份</h2>
@@ -1343,7 +1372,7 @@ function sumView(){
   if(av>0){var o=fv(av,"month",S.set.rate,10);b.hidden=false;
     b.innerHTML='这个月「不必要」花了 <b>'+rm0(av)+'</b>。如果每个月都省下这个数，存 10 年（'+S.set.rate+'%）≈ <b>'+rm0(o.fv)+'</b>，现值约 '+rm0(pv(o.fv,10))+'。'}
   else b.hidden=true;
-  cmpView(m);recurView();weekView();freeView();mustChipsView();
+  cmpView(m);recurView();weekView();freeView();mustChipsView();yearView();
   $("budTitle2").textContent=m+" 预算";renderBudget($("budList2"),$("budCard2"),budgetRows(m));
 }
 function prevMonth(m,k){var y=+m.slice(0,4),n=+m.slice(5,7)-(k===undefined?1:k);while(n<1){n+=12;y--}return y+"-"+String(n).padStart(2,"0")}
@@ -1380,6 +1409,99 @@ function cmpView(m){
 $("sm").addEventListener("change",sumView);
 [["si","infl"]].forEach(function(p){
   $(p[0]).addEventListener("input",function(){var v=parseFloat(this.value);S.set[p[1]]=isNaN(v)?0:v;S.setDirty=true;queue();syncUI();sumView();freeMiniView()});
+});
+
+/* ---- yearly report ---- */
+var yrSel=null;
+function yearsAvail(){
+  var ys={};ys[today().slice(0,4)]=1;
+  spent().forEach(function(x){ys[x.date.slice(0,4)]=1});
+  S.expenses.forEach(function(x){if(x.cat===SKIP)ys[x.date.slice(0,4)]=1});
+  return Object.keys(ys).sort().reverse();
+}
+function yearReport(y){
+  var curM=today().slice(0,7),rows=[],cats={},tot=0,big=null,av=0,skipTot=0,skipN=0,fixed=0,inc=0,spentWithInc=0;
+  var skipBy={};S.expenses.forEach(function(x){if(x.cat===SKIP&&x.date.slice(0,4)===y){skipBy[x.date.slice(0,7)]=(skipBy[x.date.slice(0,7)]||0)+x.amt;skipTot+=x.amt;skipN++}});
+  var first=null;
+  for(var i=1;i<=12;i++){var m=y+"-"+p2(i);if(m>curM)break;if(monthData(m).n>0||skipBy[m]){first=i;break}}
+  if(first){
+    for(var k=first;k<=12;k++){
+      var mm=y+"-"+p2(k);if(mm>curM)break;
+      var f=freeMoney(mm),sk=skipBy[mm]||0;
+      var r={m:mm,inc:f.inc>0?f.inc:null,tot:f.tot,must:f.rec+f.cat+f.rep,free:f.freeSpent,skip:sk,bal:f.inc>0?f.inc-f.tot:null};
+      rows.push(r);inc+=r.inc||0;fixed+=r.must;if(r.bal!==null)spentWithInc+=r.tot;
+    }
+  }
+  spent().forEach(function(x){
+    if(x.date.slice(0,4)!==y)return;
+    tot+=x.amt;cats[x.cat]=(cats[x.cat]||0)+x.amt;if(AVOID[x.cat])av+=x.amt;
+    if(!x.ro&&(!big||x.amt>big.amt))big=x;
+  });
+  var active=rows.filter(function(r){return r.tot>0}),peak=null;
+  active.forEach(function(r){if(!peak||r.tot>peak.tot)peak=r});
+  var catList=Object.keys(cats).sort(function(a,b){return cats[b]-cats[a]}).map(function(c){return {cat:c,amt:cats[c],pct:tot>0?cats[c]/tot*100:0}});
+  var bal=inc>0?inc-spentWithInc:null;
+  return {year:y,rows:rows,tot:tot,inc:inc,bal:bal,rate:inc>0&&bal!==null?bal/inc*100:null,months:active.length,avg:active.length?tot/active.length:0,peak:peak,big:big,av:av,skip:skipTot,skipN:skipN,fixed:fixed,cats:catList};
+}
+function yearView(){
+  var ys=yearsAvail(),cur=yrSel&&ys.indexOf(yrSel)>=0?yrSel:ys[0];yrSel=cur;
+  $("yrSel").innerHTML=ys.map(function(y){return '<option>'+y+'</option>'}).join("");$("yrSel").value=cur;
+  var r=yearReport(cur),partial=cur===today().slice(0,4);
+  $("yrTitle").textContent=cur+" 年度报表"+(partial?"（至今）":"");
+  if(!r.rows.length){$("yrBody").innerHTML='<div class="empty">'+cur+' 年还没有记录</div>';return}
+  var max=Math.max.apply(null,r.rows.map(function(x){return x.tot}).concat([1]));
+  var tiles='<div class="stat"><div><small>全年支出</small><strong>'+rm0(r.tot)+'</strong></div><div><small>月均</small><strong>'+rm0(r.avg)+'</strong></div><div><small>'+(r.rate!==null?"储蓄率":"结余")+'</small><strong class="'+(r.rate!==null&&r.rate<0?"warnv":"")+'">'+(r.rate!==null?Math.round(r.rate)+"%":"—")+'</strong></div></div>';
+  var head='<div class="yr head"><span>月</span><span></span><span style="text-align:right">支出</span><span class="bal">结余</span></div>';
+  var list=r.rows.map(function(x){
+    var b=x.bal===null?"—":(x.bal>=0?"+":"−")+rm0(Math.abs(x.bal)).slice(3);
+    return '<div class="yr"><span class="mo">'+x.m.slice(5)+'月</span><div class="bar"><i style="width:'+Math.max(x.tot>0?2:0,x.tot/max*100)+'%"></i></div><span class="amt">'+rm0(x.tot)+'</span><span class="bal '+(x.bal===null?"flat":x.bal<0?"up":"down")+'">'+b+'</span></div>';
+  }).join("");
+  var tr='<div class="yr tot"><span></span><span></span><span class="amt">'+rm0(r.tot)+'</span><span class="bal">'+(r.bal===null?"—":(r.bal>=0?"+":"−")+rm0(Math.abs(r.bal)).slice(3))+'</span></div>';
+  var cmax=r.cats.length?r.cats[0].amt:1;
+  var cats=r.cats.slice(0,8).map(function(c){return '<div class="cat"><div class="t"><span>'+esc(c.cat)+'</span><span class="amt">'+rm0(c.amt)+' · '+Math.round(c.pct)+'%</span></div><div class="bar"><i class="'+(AVOID[c.cat]?"av":"")+'" style="width:'+Math.max(2,c.amt/cmax*100)+'%"></i></div></div>'}).join("");
+  var rest=r.cats.slice(8).reduce(function(t,c){return t+c.amt},0);
+  if(rest>0)cats+='<div class="cat"><div class="t"><span>其他（'+(r.cats.length-8)+' 类）</span><span class="amt">'+rm0(rest)+' · '+Math.round(rest/r.tot*100)+'%</span></div></div>';
+  var hi=[];
+  if(r.peak)hi.push("最花钱的月份：<b>"+r.peak.m.slice(5)+" 月</b>（"+rm0(r.peak.tot)+"）");
+  if(r.big)hi.push("最大的一笔：<b>"+esc(r.big.item)+"</b> "+rm0(r.big.amt)+"（"+r.big.date.slice(5)+"）");
+  if(r.fixed>0)hi.push("每月必花合计：<b>"+rm0(r.fixed)+"</b>（固定支出、必花分类、欠款还款），占全年支出 "+Math.round(r.fixed/r.tot*100)+"%");
+  if(r.av>0)hi.push("「不必要」共花了 <b>"+rm0(r.av)+"</b>，占 "+Math.round(r.av/r.tot*100)+"%");
+  if(r.skipN>0)hi.push("忍住了 <b>"+r.skipN+"</b> 次，省下 <b>"+rm0(r.skip)+"</b> 🎉");
+  if(r.inc>0)hi.push("收入 "+rm0(r.inc)+"，"+(r.bal>=0?"结余 ":"超支 ")+rm0(Math.abs(r.bal)));
+  $("yrBody").innerHTML=tiles+'<div style="margin-top:14px">'+head+list+tr+'</div><h3 style="margin:16px 0 4px;font-size:13px;color:var(--muted);font-weight:600">分类占比</h3>'+cats+
+    (hi.length?'<ul class="wins">'+hi.map(function(x){return '<li>'+x+'</li>'}).join("")+'</ul>':'');
+}
+function yearSummaryCSV(y){
+  var r=yearReport(y),n=function(v){return v===null?"":(Math.round(v*100)/100).toFixed(2)};
+  var out=["年度报表,"+y,"月份,收入,支出,必花,自由支出,忍住省下,结余"];
+  r.rows.forEach(function(x){out.push([x.m,n(x.inc),n(x.tot),n(x.must),n(x.free),n(x.skip),n(x.bal)].join(","))});
+  out.push(["合计",n(r.inc),n(r.tot),n(r.fixed),n(r.rows.reduce(function(t,x){return t+x.free},0)),n(r.skip),n(r.bal)].join(","));
+  out.push("","分类,金额,占比");
+  r.cats.forEach(function(c){out.push([csvCell(c.cat),n(c.amt),(Math.round(c.pct*10)/10).toFixed(1)+"%"].join(","))});
+  return out.join("\n");
+}
+function yearTxCSV(y){
+  var rows=spent().filter(function(x){return x.date.slice(0,4)===y}).sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:a.id-b.id});
+  return "date,item,category,amount\n"+rows.map(function(x){return [x.date,csvCell(x.item),csvCell(x.cat),(Math.round(x.amt*100)/100).toFixed(2)].join(",")}).join("\n");
+}
+function downloadText(name,text){
+  var b=new Blob(["\ufeff"+text],{type:"text/csv;charset=utf-8"}),u=URL.createObjectURL(b),a=document.createElement("a");
+  a.href=u;a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(u);if(a.parentNode)a.parentNode.removeChild(a)},1500);
+}
+$("yrSel").addEventListener("change",function(){yrSel=this.value;yearView()});
+$("yrCopy").addEventListener("click",function(){
+  var t=yearSummaryCSV(yrSel);$("yrText").hidden=false;$("yrText").value=t;
+  var done=function(){$("yrMsg").textContent="已复制 "+yrSel+" 年汇总，可以贴到 Excel 或 Google Sheet。"},fail=function(){$("yrText").select();$("yrMsg").textContent="请手动复制上面的文字。"};
+  try{navigator.clipboard.writeText(t).then(done,fail)}catch(e){fail()}
+});
+$("yrDlSum").addEventListener("click",function(){downloadText("pocket-ledger-"+yrSel+"-summary.csv",yearSummaryCSV(yrSel));$("yrMsg").textContent="已生成汇总文件。"});
+$("yrDlTx").addEventListener("click",function(){downloadText("pocket-ledger-"+yrSel+"-transactions.csv",yearTxCSV(yrSel));$("yrMsg").textContent="已生成明细文件。"});
+$("yrPrint").addEventListener("click",function(){
+  document.body.classList.add("print-year");
+  var off=function(){document.body.classList.remove("print-year");window.removeEventListener("afterprint",off)};
+  window.addEventListener("afterprint",off);
+  try{window.print()}finally{setTimeout(off,1000)}
 });
 
 /* ---- backup ---- */
