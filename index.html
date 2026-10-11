@@ -81,6 +81,14 @@ svg{width:100%;height:auto;display:block}
 .empty{color:var(--muted);text-align:center;padding:18px 0;font-size:14px}
 [hidden]{display:none!important}
 @media (max-width:420px){.rates{grid-template-columns:1fr}.stat{grid-template-columns:1fr 1fr}}
+.cmp{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.cmp:first-of-type{border-top:0}
+.cmp .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmp .v{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.cmp .v small{color:var(--muted);display:block;font-size:11px}
+.up{color:var(--warn);font-weight:700}.down{color:var(--good);font-weight:700}.flat{color:var(--muted)}
+.tr{display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0}
+.tr .mo{width:52px;color:var(--muted);flex:none}.tr .bar{flex:1;margin:0}.tr .amt{width:78px;text-align:right;font-weight:600}
 .sync{font-size:12px;color:var(--muted);margin:-10px 0 14px}
 .sync.err{color:var(--warn)}
 </style>
@@ -144,6 +152,15 @@ svg{width:100%;height:auto;display:block}
       <div class="stat" id="stat"></div>
       <div id="cats" style="margin-top:8px"></div>
       <div id="avBox" class="hint" hidden></div>
+    </div>
+    <div class="card" id="cmpCard">
+      <h2 id="cmpTitle">与上月对比</h2>
+      <div id="cmp"></div>
+      <p class="msg" id="cmpNote"></p>
+    </div>
+    <div class="card">
+      <h2>最近 6 个月</h2>
+      <div id="trend"></div>
     </div>
     <div class="card">
       <h2>设置</h2>
@@ -387,6 +404,38 @@ function sumView(){
   if(av>0){var o=fv(av,"month",S.set.rate,10);b.hidden=false;
     b.innerHTML='这个月「不必要」花了 <b>'+rm0(av)+'</b>。如果每个月都省下这个数，存 10 年（'+S.set.rate+'%）≈ <b>'+rm0(o.fv)+'</b>，现值约 '+rm0(pv(o.fv,10))+'。'}
   else b.hidden=true;
+  cmpView(m);
+}
+function prevMonth(m,k){var y=+m.slice(0,4),n=+m.slice(5,7)-(k===undefined?1:k);while(n<1){n+=12;y--}return y+"-"+String(n).padStart(2,"0")}
+function monthData(m){
+  var o={tot:0,av:0,bc:{},n:0};
+  S.expenses.forEach(function(x){if(x.date.slice(0,7)!==m)return;o.n++;o.tot+=x.amt;if(AVOID[x.cat])o.av+=x.amt;o.bc[x.cat]=(o.bc[x.cat]||0)+x.amt});
+  return o;
+}
+function delta(cur,prev){
+  var d=cur-prev;
+  if(Math.abs(d)<0.005)return '<span class="flat">持平</span>';
+  var pct=prev>0?" ("+(d>0?"+":"")+Math.round(d/prev*100)+"%)":"";
+  return '<span class="'+(d>0?"up":"down")+'">'+(d>0?"▲ +":"▼ −")+rm0(Math.abs(d)).slice(3)+pct+'</span>';
+}
+function cmpView(m){
+  var pm=prevMonth(m),c=monthData(m),p=monthData(pm);
+  $("cmpTitle").textContent=m+" vs "+pm;
+  if(!c.n&&!p.n){$("cmp").innerHTML='<div class="empty">这两个月都没有记录</div>';$("cmpNote").textContent="";}
+  else{
+    var rows=[["总支出",c.tot,p.tot],["不必要",c.av,p.av]];
+    var keys=Object.keys(c.bc).concat(Object.keys(p.bc).filter(function(k){return !(k in c.bc)}));
+    keys.sort(function(a,b){return Math.abs((c.bc[b]||0)-(p.bc[b]||0))-Math.abs((c.bc[a]||0)-(p.bc[a]||0))});
+    keys.forEach(function(k){rows.push([k,c.bc[k]||0,p.bc[k]||0])});
+    $("cmp").innerHTML=rows.map(function(r,i){
+      return '<div class="cmp"><span class="n">'+(i<2?'<b>'+r[0]+'</b>':esc(r[0]))+'</span><span class="v">'+rm0(r[1])+'<small>上月 '+rm0(r[2])+'</small></span><span class="v" style="min-width:96px">'+delta(r[1],r[2])+'</span></div>';
+    }).join("");
+    $("cmpNote").textContent=(m===today().slice(0,7)?"这个月还没过完，数字会随着记账继续增加。":"")+"▲ = 比上月多花（橙色），▼ = 比上月少花（绿色）。分类按变化最大的排前面。";
+  }
+  var ms=[],max=0;for(var k=5;k>=0;k--){var mm=prevMonth(m,k),d=monthData(mm);ms.push([mm,d]);max=Math.max(max,d.tot)}
+  $("trend").innerHTML=ms.map(function(x){
+    var d=x[1];return '<div class="tr"><span class="mo">'+x[0].slice(2)+'</span><div class="bar"><i style="width:'+(max?Math.max(d.tot?2:0,d.tot/max*100):0)+'%"></i></div><span class="amt">'+rm0(d.tot)+'</span></div>';
+  }).join("");
 }
 $("sm").addEventListener("change",sumView);
 [["sw","wage"],["sd","ded"],["si","infl"]].forEach(function(p){
