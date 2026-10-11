@@ -126,6 +126,31 @@ details.debt .bar{margin:10px 0 0}
 .cmp .v{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
 .cmp .v small{color:var(--muted);display:block;font-size:12px}
 .up{color:var(--warn);font-weight:600}.down{color:var(--good);font-weight:600}.flat{color:var(--muted)}
+.toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);z-index:60;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);padding:11px 18px 11px 14px;border-radius:99px;background:var(--surface);color:var(--ink);box-shadow:0 8px 28px rgba(0,0,0,.18),0 0 0 .5px var(--line);opacity:0;transform:translate(-50%,-24px) scale(.96);pointer-events:none;transition:opacity .22s,transform .28s cubic-bezier(.2,.9,.3,1.2)}
+.toast.show{opacity:1;transform:translate(-50%,0) scale(1)}
+.toast b{display:block;font-weight:600;font-size:15px}.toast small{display:block;color:var(--muted);font-size:12px}
+.toast .tick{width:26px;height:26px;flex:none;padding:4px;border-radius:99px;background:var(--good);stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.toast .tick path{stroke-dasharray:24;stroke-dashoffset:24}
+.toast.show .tick path{animation:draw .45s .1s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.celebrate{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;pointer-events:none;overflow:hidden;background:rgba(0,0,0,.28);animation:fadein .2s ease-out}
+.celebrate.out{animation:fadeout .25s ease-in forwards}
+.celebrate .card2{width:min(86vw,340px);padding:26px 22px 22px;border-radius:22px;background:var(--surface);text-align:center;box-shadow:0 18px 60px rgba(0,0,0,.3);animation:pop .5s cubic-bezier(.2,1.2,.3,1) both}
+.celebrate .big2{font-size:56px;line-height:1;animation:bounce .9s .25s ease-in-out 2}
+.celebrate h3{margin:10px 0 6px;font-size:22px;letter-spacing:-.01em}
+.celebrate p{margin:4px 0;color:var(--muted);font-size:15px}
+.celebrate .amt2{color:var(--good);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;margin:8px 0}
+.celebrate .ms{margin-top:10px;padding:8px 12px;border-radius:12px;background:var(--good-bg);color:var(--good);font-weight:600;font-size:14px}
+.celebrate .tip{margin-top:12px;font-size:12px;color:var(--muted)}
+.celebrate .card2{position:relative;z-index:1}
+.confetti{position:absolute;inset:0;pointer-events:none}
+.confetti i{position:absolute;top:-4vh;left:var(--x);width:9px;height:14px;border-radius:2px;background:var(--c);opacity:.95;animation:fall var(--t) var(--d) cubic-bezier(.3,.1,.6,1) forwards}
+@keyframes fall{to{transform:translate3d(var(--dx),108vh,0) rotate(var(--r))}}
+@keyframes pop{from{opacity:0;transform:scale(.6) translateY(20px)}to{opacity:1;transform:none}}
+@keyframes bounce{0%,100%{transform:translateY(0) rotate(0)}30%{transform:translateY(-14px) rotate(-8deg)}60%{transform:translateY(0) rotate(8deg)}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes fadeout{to{opacity:0}}
+@media (prefers-reduced-motion:reduce){.confetti{display:none}.celebrate .card2,.celebrate .big2,.toast.show .tick path{animation:none}.toast.show .tick path{stroke-dashoffset:0}.toast{transition:opacity .01s}}
 .tr{display:flex;align-items:center;gap:8px;font-size:13px;margin:8px 0}
 .tr .mo{width:52px;color:var(--muted);flex:none}.tr .bar{flex:1;margin:0}.tr .amt{width:80px;text-align:right}
 </style>
@@ -286,6 +311,7 @@ details.debt .bar{margin:10px 0 0}
   </section>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <nav class="tabbar" role="tablist" id="nav"><div class="in">
   <button role="tab" data-t="log" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>记账</button>
   <button role="tab" data-t="think" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>先别买</button>
@@ -321,6 +347,42 @@ function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if
   try{var c=localStorage.getItem(CKEY);if(c){var p=JSON.parse(c);C.url=p.url||"";C.token=p.token||"";}}catch(e){}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function saveCfg(){try{localStorage.setItem(CKEY,JSON.stringify(C));}catch(e){}}
+
+/* ---- feedback: toast after saving, celebration after a skipped purchase ---- */
+var toastTimer=null,celeTimer=null;
+function reduceMotion(){try{return window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches}catch(e){return false}}
+function toast(title,sub){
+  var el=$("toast");
+  el.innerHTML='<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><div><b>'+esc(title)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</div>';
+  el.classList.remove("show");void el.offsetWidth;el.classList.add("show");
+  clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove("show")},2100);
+}
+var CHEERS=["每一次忍住，都是在给未来的自己存钱。","意志力 +1！","今天的你，比昨天更自由。","小小的坚持，会变成大大的复利。","钱留住了，未来更轻松。","你做到了，继续保持！","忍住的不是钱，是主动权。"];
+var MILESTONES=[100,200,500,1000,2000,5000,10000,20000];
+function endCelebrate(){
+  var el=document.getElementById("celebrate");clearTimeout(celeTimer);
+  if(!el)return;el.removeAttribute("id");el.classList.add("out");setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el)},260);
+}
+function celebrate(amt,before,after,count){
+  endCelebrate();
+  var ms="";
+  if(count===1)ms="第一次忍住，好的开始！";
+  else MILESTONES.forEach(function(m){if(before<m&&after>=m)ms="累计省下突破 "+rm0(m)+"！"});
+  var el=document.createElement("div");el.id="celebrate";el.className="celebrate";el.setAttribute("role","status");
+  el.innerHTML='<div class="card2"><div class="big2">🎉</div><h3>太棒了，忍住了！</h3><div class="amt2">'+rm(amt)+'</div><p>'+CHEERS[Math.floor(Math.random()*CHEERS.length)]+'</p><p>累计已省 <b>'+rm(after)+'</b>（'+count+' 次）</p>'+(ms?'<div class="ms">'+ms+'</div>':'')+'<div class="tip">点任意位置继续</div></div>';
+  if(!reduceMotion()){
+    var c=document.createElement("div");c.className="confetti";var cols=["#ff3b30","#ff9500","#ffcc00","#34c759","#0a84ff","#af52de","#ff2d55"];
+    for(var i=0;i<34;i++){var p=document.createElement("i");
+      p.style.cssText="--x:"+Math.round(Math.random()*100)+"vw;--dx:"+Math.round(Math.random()*160-80)+"px;--r:"+Math.round(Math.random()*900-450)+"deg;--t:"+(1.9+Math.random()*1.3).toFixed(2)+"s;--d:"+(Math.random()*.5).toFixed(2)+"s;--c:"+cols[i%cols.length];
+      c.appendChild(p)}
+    el.insertBefore(c,el.firstChild);   /* behind the card so it never covers the text */
+  }
+  document.body.appendChild(el);
+  celeTimer=setTimeout(endCelebrate,3600);
+}
+/* any tap or key press dismisses the celebration, and still reaches whatever is underneath */
+document.addEventListener("pointerdown",function(){if(document.getElementById("celebrate"))endCelebrate()},true);
+document.addEventListener("keydown",function(){if(document.getElementById("celebrate"))endCelebrate()},true);
 
 /* ---- sync: local-first, pending ops are replayed idempotently (add = upsert by id, del by id) ---- */
 function applyOp(op){
@@ -499,8 +561,8 @@ $("add").addEventListener("click",function(){
   if(editing)S.expenses=S.expenses.filter(function(x){return String(x.id)!==editId});
   S.expenses.push(rec);queue({op:"add",row:rec});syncUI();
   if(editing)endEdit();
-  $("fa").value="";$("fi").value="";$("liveHint").hidden=true;$("addMsg").textContent=editing?"已修改 ✓":"已记录 ✓";
-  setTimeout(function(){$("addMsg").textContent=""},1800);
+  $("fa").value="";$("fi").value="";$("liveHint").hidden=true;$("addMsg").textContent="";
+  toast(editing?"修改成功":"记账成功",rec.cat+" · "+rm(rec.amt));
   $("lm").value=d.slice(0,7);listView();
   var w=budgetRows(d.slice(0,7)).filter(function(r){return r.state!=="ok"&&(r.key==="TOTAL"||r.key===rec.cat||(r.key==="AVOID"&&AVOID[rec.cat]))});
   if(w.length){var h=$("liveHint");h.className="hint"+(w.some(function(r){return r.state==="over"})?" bad":"");h.innerHTML=budgetWarnHtml(w);h.hidden=false;
@@ -513,8 +575,9 @@ $("skip").addEventListener("click",function(){
   var rec={id:Date.now(),date:d,item:it,cat:SKIP,amt:Math.round(a*100)/100};
   S.expenses.push(rec);queue({op:"add",row:rec});syncUI();
   $("fa").value="";$("fi").value="";$("liveHint").hidden=true;
-  $("addMsg").textContent="太棒了，忍住了 "+rm(rec.amt)+" ✓";
-  setTimeout(function(){$("addMsg").textContent=""},2500);
+  $("addMsg").textContent="";
+  var tot=0,n=0;S.expenses.forEach(function(x){if(x.cat===SKIP){tot+=x.amt;n++}});
+  celebrate(rec.amt,tot-rec.amt,tot,n);
 });
 
 /* ---- saved (忍住没买) ---- */
@@ -646,6 +709,7 @@ $("dlist").addEventListener("click",function(e){
     var rec={id:Date.now(),date:dt,item:d.dir==="owe"?"还款":"收款",cat:"DebtPay:"+pay+(fx?":"+rate:""),amt:r2(a)};
     S.expenses.push(rec);queue({op:"add",row:rec});syncUI();debtView();
     var m2=document.querySelector('[data-did="'+pay+'"] [data-pmsg]');if(m2)m2.textContent="已记录 ✓"+note;
+    toast(d.dir==="owe"?"还款已记录":"收款已记录",rm(rec.amt)+(debts().by[pay]&&debts().by[pay].settled?" · 已结清 🎉":""));
   }else if(pdel){S.expenses=S.expenses.filter(function(x){return String(x.id)!==pdel});queue({op:"del",id:+pdel});syncUI();debtView()}
   else if(ddel){
     if(b.getAttribute("data-sure")!=="1"){b.setAttribute("data-sure","1");b.textContent="再按一次确认删除（连同还款记录）";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-sure");b.textContent="删除这笔欠款"}},3000);return}
@@ -688,6 +752,7 @@ $("dadd").addEventListener("click",function(){
   if(editing)endDebtEdit();else{$("dn").value="";$("da").value="";$("du").value="";$("dr").value=""}
   $("dmsg").textContent=editing?"已修改 ✓":"已添加 ✓";
   setTimeout(function(){$("dmsg").textContent=""},1800);
+  toast(editing?"欠款已修改":"欠款已添加",name+" · "+(cur==="MYR"?rm(r2(a)):cur+" "+r2(a)));
   debtView();
 });
 
