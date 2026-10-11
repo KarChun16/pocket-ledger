@@ -121,6 +121,16 @@ input[type=month]{-webkit-appearance:none;appearance:none;display:block;text-ali
 .goalrow.done .bar i{background:var(--good)}.goalrow.done .t b::after{content:" 🎯";}
 .celebrate .goal{margin-top:10px;padding:8px 12px;border-radius:12px;background:var(--tint);color:var(--accent);font-weight:600;font-size:14px}
 .celebrate .goal.hit{background:var(--good-bg);color:var(--good)}
+.wchart{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:14px 0 4px}
+.wc{display:flex;flex-direction:column;align-items:center;min-width:0}
+.wb{height:84px;width:100%;display:flex;align-items:flex-end}
+.wb i{display:block;width:100%;border-radius:6px 6px 3px 3px;background:var(--c5);min-height:2px}
+.wb i.hi{background:var(--warn)}.wb i.fut{opacity:.25}
+.wc small{font-size:11px;color:var(--muted);line-height:1.5}.wc .wv{font-variant-numeric:tabular-nums;min-height:16px}
+.wbig{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.wnav{display:flex;gap:6px}.wnav .x{width:34px;height:34px;background:var(--surface2);font-size:20px}.wnav .x:disabled{opacity:.3}
+.wins{margin:12px 0 0;padding:0;list-style:none}.wins li{padding:6px 0;font-size:15px}
+.wup{margin-top:14px}.wup h3{margin:0 0 4px;font-size:13px;color:var(--muted);font-weight:600}
 .brow{display:flex;align-items:center;gap:8px;margin:8px 0}.brow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brow input{width:110px}
 .cat{margin:12px 0}
 .cat .t{display:flex;justify-content:space-between;font-size:15px}
@@ -172,6 +182,11 @@ input[type=month]{-webkit-appearance:none;appearance:none;display:block;text-ali
   <p class="sync" id="syncBar">未连接 Google Sheet（只存在本机）</p>
 
   <section id="p-log">
+    <div class="card" id="weekBanner" hidden>
+      <h2>每周总结</h2>
+      <p id="wkBannerText" style="margin:0 0 10px"></p>
+      <div class="row"><button class="btn small" id="wkBannerGo">查看总结</button><button class="btn ghost small" id="wkBannerOk">知道了</button></div>
+    </div>
     <div class="card" id="debtAlert" hidden>
       <h2>欠款提醒</h2>
       <div id="debtAlertList"></div>
@@ -271,6 +286,13 @@ input[type=month]{-webkit-appearance:none;appearance:none;display:block;text-ali
   </section>
 
   <section id="p-sum" hidden>
+    <div class="card" id="weekCard">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h2 id="wkTitle" style="margin:0">每周总结</h2>
+        <div class="wnav"><button class="x" id="wkPrev" aria-label="上一周">‹</button><button class="x" id="wkNext" aria-label="下一周">›</button></div>
+      </div>
+      <div id="wkBody"></div>
+    </div>
     <div class="card">
       <div class="row" style="justify-content:space-between;margin-bottom:8px">
         <h2 style="margin:0">本月总览</h2>
@@ -516,7 +538,7 @@ function fillMonths(sel,keep){
   sel.value=ms.indexOf(cur)>=0?cur:ms[0];
 }
 function listView(){
-  budgetView();debtAlertView();
+  budgetView();debtAlertView();weekBannerView();
   fillMonths($("lm"));
   var m=$("lm").value;
   var rows=spent().filter(function(x){return x.date.slice(0,7)===m}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id});
@@ -950,6 +972,84 @@ $("recList").addEventListener("click",function(e){
   }
 });
 
+/* ---- weekly summary (Mon-Sun) ---- */
+var WKN=["一","二","三","四","五","六","日"],wkStart=null;
+function d2s(d){return d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate())}
+function s2d(s){return new Date(s+"T12:00:00")}
+function addDays(s,n){var d=s2d(s);d.setDate(d.getDate()+n);return d2s(d)}
+function mondayOf(s){var d=s2d(s);d.setDate(d.getDate()-(d.getDay()+6)%7);return d2s(d)}
+function latestWeek(){var t=today(),m=mondayOf(t);return s2d(t).getDay()===0?m:addDays(m,-7)}   /* Sunday already reports the current week */
+function wkLabel(a){return a.slice(5).replace("-","/")+"–"+addDays(a,6).slice(5).replace("-","/")}
+function weekData(start,n){
+  var days=[0,0,0,0,0,0,0],cat={},o={start:start,days:days,cat:cat,tot:0,av:0,big:null,sk:0,skn:0,n:n},end=addDays(start,n-1);
+  spent().forEach(function(x){
+    if(x.date<start||x.date>end)return;
+    days[Math.round((s2d(x.date)-s2d(start))/864e5)]+=x.amt;o.tot+=x.amt;cat[x.cat]=(cat[x.cat]||0)+x.amt;
+    if(AVOID[x.cat])o.av+=x.amt;if(!o.big||x.amt>o.big.amt)o.big=x;
+  });
+  S.expenses.forEach(function(x){if(x.cat===SKIP&&x.date>=start&&x.date<=end){o.sk+=x.amt;o.skn++}});
+  return o;
+}
+function weekHasActivity(w){return w.tot>0||w.skn>0}
+function earliestWeek(){var e=null;S.expenses.forEach(function(x){if(/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&(!e||x.date<e))e=x.date});return e?mondayOf(e):null}
+function wkDelta(cur,prev){var d=cur-prev;return {d:d,pct:prev>0?Math.round(d/prev*100):null}}
+function weekView(){
+  var t=today(),curMon=mondayOf(t),latest=latestWeek();
+  if(!wkStart||wkStart>curMon)wkStart=latest;
+  var partial=wkStart===curMon&&s2d(t).getDay()!==0,upto=partial?((s2d(t).getDay()+6)%7)+1:7;
+  var cur=weekData(wkStart,upto),prev=weekData(addDays(wkStart,-7),upto),ear=earliestWeek();
+  $("wkTitle").textContent=(partial?"本周至今 ":wkStart===latest?"最近一周 ":"")+wkLabel(wkStart);
+  $("wkPrev").disabled=!ear||wkStart<=ear;$("wkNext").disabled=wkStart>=curMon;
+  if(!weekHasActivity(cur)&&!weekHasActivity(prev)&&!S.expenses.length){$("wkBody").innerHTML='<div class="empty">这一周还没有记录</div>';return}
+  var del=wkDelta(cur.tot,prev.tot),cmpWord=partial?"上周同期":"上周";
+  var deltaHtml=prev.tot>0||cur.tot>0?(Math.abs(del.d)<0.005?'<span class="flat">和'+cmpWord+'持平</span>':'<span class="'+(del.d>0?"up":"down")+'">'+(del.d>0?"▲ 比"+cmpWord+"多 ":"▼ 比"+cmpWord+"少 ")+rm0(Math.abs(del.d))+(del.pct!==null?"（"+(del.d>0?"+":"−")+Math.abs(del.pct)+"%）":"")+'</span>'):'';
+  var max=Math.max.apply(null,cur.days.concat([1])),peak=cur.days.indexOf(Math.max.apply(null,cur.days));
+  var bars=cur.days.map(function(v,i){return '<div class="wc"><small class="wv">'+(v?rm0(v).slice(3):"")+'</small><div class="wb"><i class="'+(v>0&&i===peak?"hi":"")+(i>=upto?" fut":"")+'" style="height:'+(v/max*100)+'%"></i></div><small>周'+WKN[i]+'</small></div>'}).join("");
+  var cats=Object.keys(cur.cat).sort(function(a,b){return cur.cat[b]-cur.cat[a]}).slice(0,3),cm=cats.length?cur.cat[cats[0]]:1;
+  var top=cats.length?cats.map(function(c){return '<div class="cat"><div class="t"><span>'+esc(c)+'</span><span class="amt">'+rm0(cur.cat[c])+'</span></div><div class="bar"><i class="'+(AVOID[c]?"av":"")+'" style="width:'+Math.max(2,cur.cat[c]/cm*100)+'%"></i></div></div>'}).join(""):'<div class="empty" style="padding:8px 0">这一周没有支出</div>';
+  var avg=cur.tot/upto;
+  var tiles='<div class="stat" style="margin-top:12px"><div><small>日均</small><strong>'+rm0(avg)+'</strong></div><div><small>不必要</small><strong class="'+(cur.av>0?"warnv":"")+'">'+rm0(cur.av)+'</strong></div><div><small>忍住了</small><strong>'+cur.skn+' 次</strong></div></div>';
+  var ins=[];
+  if(cur.tot===0&&prev.tot>0)ins.push("这一周没有支出，"+cmpWord+"花了 "+rm0(prev.tot)+"。");
+  else if(cur.tot>0&&prev.tot===0)ins.push(cmpWord+"没有支出记录，没办法比较。");
+  else if(cur.tot>0){
+    if(del.d<-0.005)ins.push("比"+cmpWord+"少花了 "+rm0(-del.d)+"，做得好！");
+    else if(del.d>0.005){
+      var gain=Object.keys(cur.cat).map(function(c){return [c,cur.cat[c]-(prev.cat[c]||0)]}).sort(function(a,b){return b[1]-a[1]})[0];
+      ins.push("比"+cmpWord+"多花了 "+rm0(del.d)+(gain&&gain[1]>0?"，增加最多的是 "+esc(gain[0])+"（+"+rm0(gain[1])+"）":"")+"。");
+    }
+  }
+  if(cur.tot>0)ins.push("花得最多的一天是周"+WKN[peak]+"（"+rm0(cur.days[peak])+"）。");
+  if(cur.big)ins.push("最大的一笔：<b>"+esc(cur.big.item)+"</b> "+rm0(cur.big.amt)+"。");
+  if(cur.av>0)ins.push("「不必要」花了 "+rm0(cur.av)+(prev.av>0?"（"+cmpWord+" "+rm0(prev.av)+"）":"")+"。");
+  if(cur.skn>0)ins.push("忍住了 "+cur.skn+" 次，省下 <b>"+rm0(cur.sk)+"</b> 🎉");
+  var up="";
+  if(wkStart>=latest){                           /* what is coming in the next 7 days */
+    var from=t,to=addDays(t,6),items=[];
+    debts().forEach(function(d){if(!d.settled&&d.due&&d.due<=to)items.push([d.due<from?from:d.due,(d.dir==="owe"?"还 ":"收 ")+d.name+(d.due<from?"（已逾期）":""),d.cur==="MYR"?rm0(d.left):cm(d.cur,d.left)])});
+    recurs().forEach(function(r){if(r.active){var n=recurNext(r);if(n>=from&&n<=to)items.push([n,r.name+"（固定支出）",rm0(r.amt)])}});
+    items.sort(function(a,b){return a[0]<b[0]?-1:a[0]>b[0]?1:0});
+    if(items.length)up='<div class="wup"><h3>接下来 7 天</h3>'+items.map(function(i){return '<div class="cmp"><span class="n">'+i[0].slice(5)+' · '+esc(i[1])+'</span><span class="v">'+i[2]+'</span></div>'}).join("")+'</div>';
+  }
+  $("wkBody").innerHTML='<div class="wbig">'+rm0(cur.tot)+'</div><div style="margin-top:2px">'+deltaHtml+'</div><div class="wchart">'+bars+'</div>'+top+tiles+
+    (ins.length?'<ul class="wins">'+ins.map(function(x){return '<li>'+x+'</li>'}).join("")+'</ul>':'')+up;
+}
+$("wkPrev").addEventListener("click",function(){wkStart=addDays(wkStart,-7);weekView()});
+$("wkNext").addEventListener("click",function(){wkStart=addDays(wkStart,7);weekView()});
+var WKSEEN="pocketledger.weekSeen";
+function weekSeen(){try{return localStorage.getItem(WKSEEN)||""}catch(e){return ""}}
+function weekBannerView(){
+  var ls=latestWeek(),cur=weekData(ls,7);
+  if(!weekHasActivity(cur)||weekSeen()===ls){$("weekBanner").hidden=true;return}
+  var prev=weekData(addDays(ls,-7),7),del=wkDelta(cur.tot,prev.tot);
+  var s=(s2d(today()).getDay()===0?"本周":"上周")+"（"+wkLabel(ls)+"）花了 <b>"+rm0(cur.tot)+"</b>";
+  if(prev.tot>0&&Math.abs(del.d)>=0.005)s+="，比前一周"+(del.d>0?"多":"少")+" "+rm0(Math.abs(del.d));
+  if(cur.skn>0)s+="，忍住了 "+cur.skn+" 次省下 "+rm0(cur.sk);
+  $("wkBannerText").innerHTML=s+"。";$("weekBanner").hidden=false;
+}
+$("wkBannerOk").addEventListener("click",function(){try{localStorage.setItem(WKSEEN,latestWeek())}catch(e){}$("weekBanner").hidden=true});
+$("wkBannerGo").addEventListener("click",function(){wkStart=latestWeek();tab("sum");var c=$("weekCard");window.scrollTo({top:0});c.scrollIntoView&&c.scrollIntoView({block:"start"})});
+
 /* ---- think ---- */
 var RATES=[3,5,7];
 function calc(){
@@ -1012,7 +1112,7 @@ function sumView(){
   if(av>0){var o=fv(av,"month",S.set.rate,10);b.hidden=false;
     b.innerHTML='这个月「不必要」花了 <b>'+rm0(av)+'</b>。如果每个月都省下这个数，存 10 年（'+S.set.rate+'%）≈ <b>'+rm0(o.fv)+'</b>，现值约 '+rm0(pv(o.fv,10))+'。'}
   else b.hidden=true;
-  cmpView(m);recurView();
+  cmpView(m);recurView();weekView();
   $("budTitle2").textContent=m+" 预算";renderBudget($("budList2"),$("budCard2"),budgetRows(m));
 }
 function prevMonth(m,k){var y=+m.slice(0,4),n=+m.slice(5,7)-(k===undefined?1:k);while(n<1){n+=12;y--}return y+"-"+String(n).padStart(2,"0")}
