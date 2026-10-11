@@ -67,6 +67,7 @@ select:disabled,input:disabled{opacity:.5}
 .stat small{display:block;color:var(--muted);font-size:12px}
 .stat strong{font-size:17px;font-variant-numeric:tabular-nums}
 .warnv{color:var(--warn)}
+.stat small.up{color:var(--warn);font-weight:600}.stat small.down{color:var(--good);font-weight:600}
 .hero{font-size:40px;font-weight:700;letter-spacing:-.02em;color:var(--good);font-variant-numeric:tabular-nums;margin:0 0 4px}
 .herosub{color:var(--muted);font-size:14px;margin:0 0 14px}
 .item{display:flex;align-items:center;gap:8px;padding:12px 0;border-top:.5px solid var(--line)}
@@ -131,6 +132,16 @@ input[type=month]{-webkit-appearance:none;appearance:none;display:block;text-ali
 .wnav{display:flex;gap:6px}.wnav .x{width:34px;height:34px;background:var(--surface2);font-size:20px}.wnav .x:disabled{opacity:.3}
 .wins{margin:12px 0 0;padding:0;list-style:none}.wins li{padding:6px 0;font-size:15px}
 .wup{margin-top:14px}.wup h3{margin:0 0 4px;font-size:13px;color:var(--muted);font-weight:600}
+.fsum{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:10px 0 0;font-size:13px;color:var(--muted)}
+.fsum button{border:0;background:transparent;color:var(--accent);font:inherit;font-size:13px;cursor:pointer;padding:4px 0}
+details.more>summary{cursor:pointer;color:var(--accent);font-size:14px;margin:10px 0 0;list-style:none}
+details.more>summary::-webkit-details-marker{display:none}
+.item.all .d{width:72px}
+.fr{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:7px 0;border-top:.5px solid var(--line);font-size:15px}
+.fr:first-of-type{border-top:0}.fr .k{color:var(--muted);min-width:0}.fr .v{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:500}
+.fr.sum{font-weight:700}.fr.sum .k{color:var(--ink)}
+.fbig{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.fbig.ok{color:var(--good)}.fbig.near{color:var(--warn)}.fbig.over{color:var(--bad)}
 .brow{display:flex;align-items:center;gap:8px;margin:8px 0}.brow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brow input{width:110px}
 .cat{margin:12px 0}
 .cat .t{display:flex;justify-content:space-between;font-size:15px}
@@ -182,6 +193,16 @@ input[type=month]{-webkit-appearance:none;appearance:none;display:block;text-ali
   <p class="sync" id="syncBar">未连接 Google Sheet（只存在本机）</p>
 
   <section id="p-log">
+    <div class="card" id="freeMini" hidden>
+      <h2>本月可用余额</h2>
+      <div class="fbig" id="freeMiniNum"></div>
+      <p class="msg" id="freeMiniSub" style="margin:4px 0 0"></p>
+    </div>
+    <div class="card" id="insightCard" hidden>
+      <h2>本月洞察</h2>
+      <div class="stat" id="homeStats"></div>
+      <ul class="wins" id="homeIns"></ul>
+    </div>
     <div class="card" id="weekBanner" hidden>
       <h2>每周总结</h2>
       <p id="wkBannerText" style="margin:0 0 10px"></p>
@@ -213,7 +234,17 @@ input[type=month]{-webkit-appearance:none;appearance:none;display:block;text-ali
         <h2 style="margin:0">明细</h2>
         <select id="lm" style="width:auto;min-height:36px;padding:6px 12px"></select>
       </div>
-      <div id="list"></div>
+      <input id="fq" type="search" placeholder="搜索项目、分类、金额、日期" autocomplete="off" enterkeyhint="search" style="margin-top:6px">
+      <div class="grid" style="margin-top:8px">
+        <div><select id="fcat" aria-label="分类"><option value="">全部分类</option></select></div>
+        <div><select id="fsort" aria-label="排序"><option value="new">最新在前</option><option value="old">最早在前</option><option value="big">金额大→小</option><option value="small">金额小→大</option></select></div>
+      </div>
+      <details class="more" id="fmore"><summary>金额范围</summary>
+        <div class="grid" style="margin-top:8px"><div><input id="fmin" type="number" inputmode="decimal" step="0.01" min="0" placeholder="最少 RM"></div><div><input id="fmax" type="number" inputmode="decimal" step="0.01" min="0" placeholder="最多 RM"></div></div>
+      </details>
+      <div class="fsum" id="fsum" hidden><span id="fsumText"></span><button id="fclear" type="button">清除筛选</button></div>
+      <div id="list" style="margin-top:6px"></div>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn ghost small" id="fmoreBtn" hidden>显示更多</button></div>
     </div>
   </section>
 
@@ -302,6 +333,14 @@ input[type=month]{-webkit-appearance:none;appearance:none;display:block;text-ali
       <div id="cats" style="margin-top:8px"></div>
       <div id="avBox" class="hint" hidden></div>
     </div>
+    <div class="card" id="freeCard">
+      <h2 id="freeTitle">能自由使用的钱</h2>
+      <div id="freeBody"></div>
+      <details class="more" id="mustMore"><summary>设置必花分类</summary>
+        <p class="msg" style="margin:8px 0">勾选的分类，每个月的支出都算「必花」（比如房租、网费、保险）。自动记账的固定支出，以及欠款的还款，不用勾也会算进必花。</p>
+        <div class="chips" id="mustChips"></div>
+      </details>
+    </div>
     <div class="card" id="budCard2" hidden>
       <h2 id="budTitle2">预算</h2>
       <div id="budList2"></div>
@@ -318,10 +357,14 @@ input[type=month]{-webkit-appearance:none;appearance:none;display:block;text-ali
     <div class="card">
       <h2>设置</h2>
       <div class="grid">
+        <div class="full"><label for="swm">薪水从哪个月起生效（格式 2026-10）</label><input id="swm" type="month" placeholder="2026-10"></div>
         <div><label for="sw">每月净薪水 (RM)</label><input id="sw" type="number" inputmode="decimal" step="0.01" min="0"></div>
         <div><label for="sd">固定扣除 (%)</label><input id="sd" type="number" inputmode="decimal" step="0.01" min="0" max="100"></div>
         <div><label for="si">通膨率 (%/年)</label><input id="si" type="number" inputmode="decimal" step="0.1" min="0" max="20"></div>
       </div>
+      <div class="msg" id="swMsg"></div>
+      <div id="payList"></div>
+      <p class="msg">改薪水或固定扣除时，会从上面选的月份起生效（默认本月），之前的月份保持原来的数字，所以过去的 Money Left 和「能自由使用」不会被改乱。想补记过去的调整，把生效月份改成那个月再填。</p>
       <p class="msg">「不必要」= Smoking、Unnecessary、Drinks。Money Left = 薪水 − 固定扣除 − 总支出。</p>
     </div>
     <div class="card">
@@ -388,7 +431,7 @@ var SKIP="Skipped";  /* "忍住没买" records live in Expenses with this catego
 function spent(){
   var by=debts().by,out=[];
   S.expenses.forEach(function(x){
-    if(x.cat===SKIP||x.cat.indexOf("Debt:")===0||x.cat.indexOf("Recur:")===0||x.cat.indexOf("Goal:")===0)return;
+    if(x.cat===SKIP||x.cat.indexOf("Debt:")===0||x.cat.indexOf("Recur:")===0||x.cat.indexOf("Goal:")===0||x.cat.indexOf("Must:")===0||x.cat.indexOf("Pay:")===0)return;
     if(x.cat.indexOf("DebtPay:")===0){var pr=payRef(x.cat),d=pr&&by[pr.id];if(d&&d.dir==="owe"&&d.spend)out.push({id:x.id,date:x.date,item:"还款："+d.name,cat:"还款",amt:x.amt,ro:true});return}
     out.push(x);
   });
@@ -471,7 +514,8 @@ $("bcl").addEventListener("input",function(e){var c=e.target.getAttribute("data-
 $("bcl").addEventListener("click",function(e){var c=e.target.getAttribute("data-bcdel");if(c){setBud(c,0);budSetView(true)}});
 $("bca").addEventListener("click",function(){var v=parseFloat($("bcv").value);if(!(v>0))return;setBud($("bcs").value,v);$("bcv").value="";budSetView(true)});
 function fillSettings(){
-  [["sw","wage"],["sd","ded"],["si","infl"]].forEach(function(p){if(document.activeElement!==$(p[0]))$(p[0]).value=p[1]==="wage"?(S.set.wage||""):S.set[p[1]]});
+  if(document.activeElement!==$("si"))$("si").value=S.set.infl;
+  payInputs();payListView();
   budSetView();
 }
 function syncNow(){
@@ -537,28 +581,64 @@ function fillMonths(sel,keep){
   sel.innerHTML=ms.map(function(m){return '<option value="'+m+'">'+m+'</option>'}).join("");
   sel.value=ms.indexOf(cur)>=0?cur:ms[0];
 }
+var LIMIT=200,shown=LIMIT;
 function listView(){
-  budgetView();debtAlertView();weekBannerView();
+  budgetView();debtAlertView();weekBannerView();freeMiniView();homeView();
+  var cur=$("lm").value;
   fillMonths($("lm"));
-  var m=$("lm").value;
-  var rows=spent().filter(function(x){return x.date.slice(0,7)===m}).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id});
-  if(!rows.length){$("list").innerHTML='<div class="empty">这个月还没有记录</div>';return}
-  $("list").innerHTML=rows.map(function(x){
+  $("lm").insertAdjacentHTML("afterbegin",'<option value="all">全部月份</option>');
+  $("lm").value=cur==="all"||$("lm").querySelector('option[value="'+cur+'"]')?cur:$("lm").options[1].value;
+  renderList();
+}
+function filterState(){return {m:$("lm").value,q:$("fq").value.trim().toLowerCase(),cat:$("fcat").value,min:parseFloat($("fmin").value),max:parseFloat($("fmax").value),sort:$("fsort").value}}
+function filtered(f){
+  var rows=spent();
+  if(f.m!=="all")rows=rows.filter(function(x){return x.date.slice(0,7)===f.m});
+  var toks=f.q?f.q.split(/\s+/):[];
+  rows=rows.filter(function(x){
+    if(f.cat&&x.cat!==f.cat)return false;
+    if(f.min>=0&&x.amt<f.min)return false;
+    if(f.max>=0&&x.amt>f.max)return false;
+    if(toks.length){var hay=(x.item+" "+x.cat+" "+x.amt.toFixed(2)+" "+x.amt+" "+x.date).toLowerCase();for(var k=0;k<toks.length;k++)if(hay.indexOf(toks[k])<0)return false}
+    return true;
+  });
+  var by={new:function(a,b){return a.date<b.date?1:a.date>b.date?-1:b.id-a.id},old:function(a,b){return a.date<b.date?-1:a.date>b.date?1:a.id-b.id},big:function(a,b){return b.amt-a.amt||(a.date<b.date?1:-1)},small:function(a,b){return a.amt-b.amt||(a.date<b.date?1:-1)}};
+  return rows.sort(by[f.sort]||by.new);
+}
+function renderList(){
+  var f=filterState(),scope=spent().filter(function(x){return f.m==="all"||x.date.slice(0,7)===f.m}),cats={};
+  scope.forEach(function(x){cats[x.cat]=1});
+  var keep=$("fcat").value;
+  $("fcat").innerHTML='<option value="">全部分类</option>'+Object.keys(cats).sort().map(function(c){return '<option>'+esc(c)+'</option>'}).join("");
+  if(cats[keep])$("fcat").value=keep;f=filterState();
+  var rows=filtered(f),active=!!(f.q||f.cat||f.min>=0||f.max>=0),all=f.m==="all";
+  $("fsum").hidden=!(active||all);
+  var tot=0;rows.forEach(function(x){tot+=x.amt});
+  $("fsumText").textContent=(active||all)?((all?"全部月份 · ":"")+(active?"找到 ":"共 ")+rows.length+" 笔 · 合计 "+rm(tot)):"";
+  $("fclear").hidden=!active;
+  if(!rows.length){$("list").innerHTML='<div class="empty">'+(active?"没有符合的记录":"这个月还没有记录")+'</div>';$("fmoreBtn").hidden=true;return}
+  var part=rows.slice(0,shown);
+  $("fmoreBtn").hidden=rows.length<=shown;$("fmoreBtn").textContent="显示更多（还有 "+(rows.length-shown)+" 笔）";
+  $("list").innerHTML=part.map(function(x){
     var av=AVOID[x.cat];
-    return '<div class="item"><div class="d">'+x.date.slice(5)+'</div><div class="m"><b>'+esc(x.item)+'</b><span class="tag'+(av?' av':'')+'">'+esc(x.cat)+'</span></div>'+
+    return '<div class="item'+(all?' all':'')+'"><div class="d">'+(all?x.date.slice(2):x.date.slice(5))+'</div><div class="m"><b>'+esc(x.item)+'</b><span class="tag'+(av?' av':'')+'">'+esc(x.cat)+'</span></div>'+
       '<div class="amt">'+rm(x.amt)+'</div>'+
       (x.ro?'':(av?'<button class="btn ghost small" data-think="'+x.id+'" title="如果没买">算</button>':'')+
       '<button class="x" data-edit="'+x.id+'" aria-label="修改" title="修改">'+ICON_EDIT+'</button>'+
       '<button class="x" data-del="'+x.id+'" aria-label="删除">×</button>')+'</div>';
   }).join("");
 }
+["fq","fmin","fmax"].forEach(function(id){$(id).addEventListener("input",function(){shown=LIMIT;renderList()})});
+["fcat","fsort"].forEach(function(id){$(id).addEventListener("change",function(){shown=LIMIT;renderList()})});
+$("fmoreBtn").addEventListener("click",function(){shown+=LIMIT;renderList()});
+$("fclear").addEventListener("click",function(){$("fq").value="";$("fcat").value="";$("fmin").value="";$("fmax").value="";shown=LIMIT;renderList()});
 $("list").addEventListener("click",function(e){
   var d=e.target.getAttribute("data-del"),t=e.target.getAttribute("data-think"),ed=e.target.getAttribute("data-edit");
   if(ed){var r=S.expenses.filter(function(y){return String(y.id)===ed})[0];if(r)startEdit(r)}
   if(d){if(editId===d)endEdit();S.expenses=S.expenses.filter(function(x){return String(x.id)!==d});queue({op:"del",id:+d});listView();syncUI();}
   if(t){var x=S.expenses.filter(function(y){return String(y.id)===t})[0];if(x){$("ta").value=x.amt;$("tf").value="once";tab("think");}}
 });
-$("lm").addEventListener("change",listView);
+$("lm").addEventListener("change",function(){shown=LIMIT;listView()});
 /* ---- budgets: settings bud_TOTAL / bud_AVOID / bud_<Category> (monthly, RM) ---- */
 function budKeys(){return Object.keys(S.set).filter(function(k){return k.indexOf("bud_")===0&&+S.set[k]>0})}
 function budState(pct){return pct>100?"over":pct>=80?"near":"ok"}
@@ -1050,6 +1130,157 @@ function weekBannerView(){
 $("wkBannerOk").addEventListener("click",function(){try{localStorage.setItem(WKSEEN,latestWeek())}catch(e){}$("weekBanner").hidden=true});
 $("wkBannerGo").addEventListener("click",function(){wkStart=latestWeek();tab("sum");var c=$("weekCard");window.scrollTo({top:0});c.scrollIntoView&&c.scrollIntoView({block:"start"})});
 
+/* ---- salary history: row cat "Pay:<effective YYYY-MM>:<deduction %>", amt = net salary, id 8000000 + month index.
+   A month uses the latest record that starts on or before it; before the first record the old single setting applies. ---- */
+var PAY_ROW_RE=/^Pay:(\d{4}-\d{2}):(\d+(?:\.\d+)?)$/;
+function payId(ym){return 8000000+monthIdx(ym)}
+function payRecords(){
+  var out=[];S.expenses.forEach(function(x){var m=PAY_ROW_RE.exec(x.cat);if(m)out.push({id:x.id,from:m[1],wage:x.amt,ded:+m[2]})});
+  return out.sort(function(a,b){return a.from<b.from?-1:a.from>b.from?1:0});
+}
+function salaryFor(m){
+  var best=null;payRecords().forEach(function(r){if(r.from<=m)best=r});
+  return best?{wage:best.wage,ded:best.ded,from:best.from}:{wage:+S.set.wage||0,ded:+S.set.ded||0,from:""};
+}
+function payMonth(){var v=$("swm").value;return /^\d{4}-(0[1-9]|1[0-2])$/.test(v)?v:null}
+function payInputs(){var m=payMonth()||today().slice(0,7),sal=salaryFor(m);
+  if(document.activeElement!==$("sw"))$("sw").value=sal.wage||"";
+  if(document.activeElement!==$("sd"))$("sd").value=sal.ded;}
+function payListView(){
+  var rs=payRecords();
+  $("payList").innerHTML=rs.length?'<h3 style="margin:12px 0 2px;font-size:13px;color:var(--muted);font-weight:600">薪水调整记录</h3>'+rs.map(function(r){
+    return '<div class="rrow"><b>'+r.from+' 起</b><div class="amt">'+rm(r.wage)+'</div><div class="info">固定扣除 '+r.ded+'%</div><div class="acts"><button class="x" data-paydel="'+r.id+'" aria-label="删除这条调整记录">×</button></div></div>';
+  }).join(""):'';
+}
+function savePay(){
+  var m=payMonth();
+  if(!m){$("swMsg").textContent="生效月份格式请填 年-月，例如 2026-10";return}
+  $("swMsg").textContent="";
+  var w=parseFloat($("sw").value),d=parseFloat($("sd").value);
+  var rec={id:payId(m),date:m+"-01",item:"薪水",cat:"Pay:"+m+":"+(isNaN(d)?0:d),amt:isNaN(w)?0:w};
+  S.expenses=S.expenses.filter(function(x){return x.id!==rec.id});S.expenses.push(rec);queue({op:"add",row:rec});
+  syncUI();payListView();sumView();freeMiniView();homeView();
+}
+$("sw").addEventListener("input",savePay);$("sd").addEventListener("input",savePay);
+$("swm").addEventListener("input",function(){if(payMonth()){$("swMsg").textContent="";payInputs()}});
+$("payList").addEventListener("click",function(e){
+  var b=e.target.closest&&e.target.closest("button[data-paydel]");if(!b)return;
+  if(b.getAttribute("data-sure")!=="1"){b.setAttribute("data-sure","1");b.textContent="再按确认";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-sure");b.innerHTML="×"}},3000);return}
+  var id=b.getAttribute("data-paydel");
+  S.expenses=S.expenses.filter(function(x){return String(x.id)!==id});queue({op:"del",id:+id});syncUI();
+  payInputs();payListView();sumView();freeMiniView();homeView();
+});
+
+/* ---- free money: net pay minus everything that has to be paid every month ----
+   must-pay categories are stored as hidden rows: cat "Must:<Category>", id 9000000 + category index (stable across devices) */
+function mustId(c){return 9000000+CATS.indexOf(c)}
+function mustSet(){var o={};S.expenses.forEach(function(x){if(x.cat.indexOf("Must:")===0)o[x.cat.slice(5)]=1});return o}
+function isRecurId(id){return id>=2e14&&id<1e15}
+function freeMoney(m){
+  var sal=salaryFor(m),wage=sal.wage,inc=wage-wage*sal.ded/100,curM=today().slice(0,7),ms=mustSet();
+  var o={m:m,wage:wage,inc:inc,payFrom:sal.from,tot:0,rec:0,cat:0,rep:0,pendRec:0,pendDebt:0,unknownFx:false,pendList:[]};
+  spent().forEach(function(x){
+    if(x.date.slice(0,7)!==m)return;
+    o.tot+=x.amt;
+    if(x.ro)o.rep+=x.amt;else if(isRecurId(x.id))o.rec+=x.amt;else if(ms[x.cat])o.cat+=x.amt;
+  });
+  if(m>=curM){                                                       /* still to be paid this month */
+    recurs().forEach(function(t){if(t.active&&recurNext(t).slice(0,7)===m){o.pendRec+=t.amt;o.pendList.push(t.name)}});
+    debts().forEach(function(d){
+      if(d.settled||d.dir!=="owe"||!d.due)return;
+      var dm=d.due.slice(0,7);if(!(m===curM?dm<=m:dm===m))return;
+      if(d.cur==="MYR"){o.pendDebt+=d.left;o.pendList.push(d.name)}
+      else if(d.leftRM!==null){o.pendDebt+=d.leftRM;o.pendList.push(d.name)}
+      else o.unknownFx=true;
+    });
+  }
+  o.must=o.rec+o.cat+o.rep+o.pendRec+o.pendDebt;
+  o.free=inc-o.must;o.freeSpent=o.tot-o.rec-o.cat-o.rep;o.left=o.free-o.freeSpent;
+  o.pct=o.free>0?o.freeSpent/o.free*100:(o.freeSpent>0?999:0);o.state=budState(o.pct);
+  if(m===curM){var dim=daysInMonth(m),dom=+today().slice(8,10);o.daysLeft=dim-dom+1;o.perDay=o.left>0?o.left/o.daysLeft:0}
+  return o;
+}
+function freeRow(k,v,cls){return '<div class="fr'+(cls?" "+cls:"")+'"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'}
+function freeView(){
+  var m=$("sm").value||today().slice(0,7),f=freeMoney(m);
+  $("freeTitle").textContent=m+" 能自由使用的钱";
+  if(!(f.wage>0)){$("freeBody").innerHTML='<div class="empty" style="padding:8px 0">先在下面的「设置」填每月净薪水，才能算出能自由使用的钱</div>';return}
+  var h=freeRow("每月净薪水（扣固定扣除后）"+(f.payFrom?"（"+f.payFrom+" 起）":""),rm0(f.inc));
+  if(f.rec>0)h+=freeRow("− 固定支出（自动记账）",rm0(f.rec));
+  if(f.pendRec>0)h+=freeRow("− 固定支出（还没到日子）",rm0(f.pendRec));
+  if(f.cat>0)h+=freeRow("− 必花分类的支出",rm0(f.cat));
+  if(f.rep>0)h+=freeRow("− 已还的欠款",rm0(f.rep));
+  if(f.pendDebt>0)h+=freeRow("− 到期还没付的欠款",rm0(f.pendDebt));
+  h+=freeRow("= 能自由使用",rm0(f.free),"sum");
+  h+=freeRow("− 已经花掉的（非必花）",rm0(f.freeSpent));
+  h+='<div style="margin-top:12px"><div class="fbig '+f.state+'">'+(f.left<0?"超支 "+rm0(-f.left):"还能用 "+rm0(f.left))+'</div><div class="bar"><i class="'+f.state+'" style="width:'+Math.min(100,f.pct)+'%"></i></div></div>';
+  if(f.daysLeft!==undefined)h+='<p class="msg">'+(f.left>0?"本月还剩 "+f.daysLeft+" 天，平均每天还能花 <b>"+rm0(f.perDay)+"</b>。":"本月已经用完了能自由使用的钱，剩下的日子要省着点。")+'</p>';
+  if(f.unknownFx)h+='<p class="msg">有外币欠款没填汇率，没有算进「到期还没付」。</p>';
+  $("freeBody").innerHTML=h;
+}
+function freeMiniView(){
+  var f=freeMoney(today().slice(0,7));
+  if(!(f.wage>0)){$("freeMini").hidden=true;return}
+  $("freeMini").hidden=false;
+  $("freeMiniNum").className="fbig "+f.state;
+  $("freeMiniNum").textContent=f.left<0?"超支 "+rm0(-f.left):rm0(f.left);
+  $("freeMiniSub").innerHTML=f.left>0?"本月还剩 "+f.daysLeft+" 天，平均每天约 <b>"+rm0(f.perDay)+"</b>"+(f.must>0?"（必花 "+rm0(f.must)+" 已扣除）":""):"已超出能自由使用的钱"+(f.must>0?"，必花 "+rm0(f.must)+" 已扣除":"");
+}
+function mustChipsView(){
+  var ms=mustSet();
+  $("mustChips").innerHTML=CATS.map(function(c){return '<button class="chip" data-must="'+esc(c)+'" aria-pressed="'+(!!ms[c])+'">'+esc(c)+'</button>'}).join("");
+}
+$("mustChips").addEventListener("click",function(e){
+  var c=e.target.getAttribute&&e.target.getAttribute("data-must");if(!c)return;
+  var id=mustId(c);
+  if(mustSet()[c]){S.expenses=S.expenses.filter(function(x){return x.cat!=="Must:"+c});S.pending.push({op:"del",id:id});queue()}
+  else{var rec={id:id,date:today(),item:"必花分类",cat:"Must:"+c,amt:0};S.expenses.push(rec);queue({op:"add",row:rec})}
+  syncUI();mustChipsView();freeView();freeMiniView();
+});
+
+/* ---- home insights ---- */
+function homeInsights(){
+  var t=today(),m=t.slice(0,7),dom=+t.slice(8,10),dim=daysInMonth(m),out=[],f=freeMoney(m),hasWage=f.wage>0;
+  var todayAll=0,todayFree=0;
+  spent().forEach(function(x){if(x.date!==t)return;todayAll+=x.amt;if(!(x.ro||isRecurId(x.id)||mustSet()[x.cat]))todayFree+=x.amt});
+  budgetRows(m).filter(function(r){return r.state!=="ok"}).sort(function(a,b){return b.pct-a.pct}).slice(0,2).forEach(function(r){
+    out.push({lv:r.state==="over"?4:3,t:r.state==="over"?"「"+esc(r.label)+"」预算已超支 "+rm0(r.used-r.b)+"（"+rm0(r.used)+" / "+rm0(r.b)+"）":"「"+esc(r.label)+"」预算已用 "+Math.round(r.pct)+"%（"+rm0(r.used)+" / "+rm0(r.b)+"）"});
+  });
+  if(hasWage&&f.daysLeft!==undefined){
+    if(dom>=3&&f.free>0){
+      var pace=f.freeSpent/dom,proj=pace*dim,diff=f.free-proj;
+      if(diff<0&&f.left>0)out.push({lv:3,t:"按现在每天约 "+rm0(pace)+" 的速度，月底会超支约 <b>"+rm0(-diff)+"</b>；之后每天控制在 <b>"+rm0(f.left/f.daysLeft)+"</b> 以内就能守住"});
+      else if(diff>=0)out.push({lv:1,t:"按现在每天约 "+rm0(pace)+" 的速度，月底大约还会剩 <b>"+rm0(diff)+"</b>"});
+    }
+    var allowance=(f.left+todayFree)/f.daysLeft;
+    if(allowance>0&&todayFree>0){
+      if(todayFree>allowance)out.push({lv:3,t:"今天已花 "+rm0(todayFree)+"，超过今日额度 "+rm0(allowance)});
+      else out.push({lv:1,t:"今天已花 "+rm0(todayFree)+"，今日额度约 "+rm0(allowance)+"，还可以花 <b>"+rm0(allowance-todayFree)+"</b>"});
+    }
+  }else if(!hasWage)out.push({lv:2,t:"到「总览」填每月净薪水，就能看到本月可用余额和花钱速度"});
+  var ws=mondayOf(t),upto=((s2d(t).getDay()+6)%7)+1,wk=weekData(ws,upto),pw=weekData(addDays(ws,-7),upto),dd=wk.tot-pw.tot;
+  if(wk.tot>0&&pw.tot>0&&Math.abs(dd)>=0.005)out.push({lv:1,t:"本周至今花了 "+rm0(wk.tot)+"，比上周同期"+(dd>0?"多 ":"少 ")+"<b>"+rm0(Math.abs(dd))+"</b>"});
+  var avd=monthData(m).av;if(avd>0)out.push({lv:2,t:"本月「不必要」已花 "+rm0(avd)});
+  var sk=0,skn=0;S.expenses.forEach(function(x){if(x.cat===SKIP&&x.date.slice(0,7)===m){sk+=x.amt;skn++}});
+  if(skn>0)out.push({lv:1,t:"本月忍住了 "+skn+" 次，省下 <b>"+rm0(sk)+"</b> 🎉"});
+  var gl=goalProgress(skipTotal()).filter(function(g){return !g.done})[0];
+  if(gl)out.push({lv:1,t:"距离「"+esc(gl.name)+"」还差 "+rm0(gl.target-gl.saved)+"（已完成 "+Math.floor(gl.saved/gl.target*100)+"%）"});
+  var soon=addDays(t,2),rc=recurs().filter(function(r){return r.active&&recurNext(r)>=t&&recurNext(r)<=soon});
+  if(rc.length)out.push({lv:1,t:"接下来 3 天会自动记账："+rc.map(function(r){return esc(r.name)+" "+rm0(r.amt)}).join("、")});
+  return out.map(function(o,i){o.i=i;return o}).sort(function(a,b){return b.lv-a.lv||a.i-b.i}).slice(0,4);
+}
+function homeView(){
+  var t=today(),m=t.slice(0,7),has=spent().length>0||salaryFor(m).wage>0;
+  $("insightCard").hidden=!has;if(!has)return;
+  var todayAll=0;spent().forEach(function(x){if(x.date===t)todayAll+=x.amt});
+  var ws=mondayOf(t),upto=((s2d(t).getDay()+6)%7)+1,wk=weekData(ws,upto),pw=weekData(addDays(ws,-7),upto),dd=wk.tot-pw.tot;
+  var cur=monthData(m);
+  var wkSub=pw.tot>0&&Math.abs(dd)>=0.005?'<small class="'+(dd>0?"up":"down")+'" style="display:block">'+(dd>0?"▲ ":"▼ ")+rm0(Math.abs(dd))+'</small>':'';
+  $("homeStats").innerHTML='<div><small>今天已花</small><strong>'+rm0(todayAll)+'</strong></div><div><small>本周至今</small><strong>'+rm0(wk.tot)+'</strong>'+wkSub+'</div><div><small>本月已花</small><strong>'+rm0(cur.tot)+'</strong></div>';
+  var ins=homeInsights();
+  $("homeIns").innerHTML=ins.map(function(o){return '<li>'+(o.lv>=4?"🔴 ":o.lv===3?"🟠 ":o.lv===2?"💡 ":"✨ ")+o.t+'</li>'}).join("");
+}
+
 /* ---- think ---- */
 var RATES=[3,5,7];
 function calc(){
@@ -1102,7 +1333,7 @@ function sumView(){
   var m=$("sm").value,rows=spent().filter(function(x){return x.date.slice(0,7)===m});
   var tot=0,av=0,bc={};
   rows.forEach(function(x){tot+=x.amt;if(AVOID[x.cat])av+=x.amt;bc[x.cat]=(bc[x.cat]||0)+x.amt});
-  var w=+S.set.wage||0,left=w-w*(+S.set.ded||0)/100-tot;
+  var sal=salaryFor(m),w=sal.wage,left=w-w*sal.ded/100-tot;
   $("stat").innerHTML='<div><small>总支出</small><strong>'+rm0(tot)+'</strong></div><div><small>不必要</small><strong class="warnv">'+rm0(av)+'</strong></div><div><small>Money Left</small><strong>'+(w?rm0(left):"—")+'</strong></div>';
   var keys=Object.keys(bc).sort(function(a,b){return bc[b]-bc[a]});
   $("cats").innerHTML=keys.length?keys.map(function(k){
@@ -1112,7 +1343,7 @@ function sumView(){
   if(av>0){var o=fv(av,"month",S.set.rate,10);b.hidden=false;
     b.innerHTML='这个月「不必要」花了 <b>'+rm0(av)+'</b>。如果每个月都省下这个数，存 10 年（'+S.set.rate+'%）≈ <b>'+rm0(o.fv)+'</b>，现值约 '+rm0(pv(o.fv,10))+'。'}
   else b.hidden=true;
-  cmpView(m);recurView();weekView();
+  cmpView(m);recurView();weekView();freeView();mustChipsView();
   $("budTitle2").textContent=m+" 预算";renderBudget($("budList2"),$("budCard2"),budgetRows(m));
 }
 function prevMonth(m,k){var y=+m.slice(0,4),n=+m.slice(5,7)-(k===undefined?1:k);while(n<1){n+=12;y--}return y+"-"+String(n).padStart(2,"0")}
@@ -1147,8 +1378,8 @@ function cmpView(m){
   }).join("");
 }
 $("sm").addEventListener("change",sumView);
-[["sw","wage"],["sd","ded"],["si","infl"]].forEach(function(p){
-  $(p[0]).addEventListener("input",function(){var v=parseFloat(this.value);S.set[p[1]]=isNaN(v)?0:v;S.setDirty=true;queue();syncUI();sumView()});
+[["si","infl"]].forEach(function(p){
+  $(p[0]).addEventListener("input",function(){var v=parseFloat(this.value);S.set[p[1]]=isNaN(v)?0:v;S.setDirty=true;queue();syncUI();sumView();freeMiniView()});
 });
 
 /* ---- backup ---- */
@@ -1198,7 +1429,7 @@ $("cx").addEventListener("click",function(){C.url="";C.token="";saveCfg();$("cu"
 load();
 $("fc").innerHTML=CATS.map(function(c){return '<option>'+c+(AVOID[c]?'':'')+'</option>'}).join("");
 $("fd").value=today();$("ds").value=today();$("cu").value=C.url;$("ct").value=C.token;
-$("sw").value=S.set.wage||"";$("sd").value=S.set.ded;$("si").value=S.set.infl;
+$("swm").value=today().slice(0,7);$("si").value=S.set.infl;payInputs();payListView();
 $("tr").value="";T.years=S.set.years||10;
 $("bcs").innerHTML=CATS.map(function(c){return '<option>'+c+'</option>'}).join("");
 yearChips();listView();budSetView();
