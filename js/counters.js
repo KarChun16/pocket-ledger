@@ -181,6 +181,13 @@ function setHide(id){
   var x={};FIELDS.forEach(function(k){x[k]=d[k]});x.hide=!d.hide;
   if(d.row)PL.rec.update(d.row.id,{extra:x});else PL.rec.add({mod:"ctrdef",text:id,extra:x});
 }
+/* change some fields of a counter's settings (e.g. from another module's settings card) */
+function patchDef(id,patch){
+  var d=def(id);if(!d)return false;
+  var x={};FIELDS.forEach(function(k){x[k]=d[k]});Object.keys(patch).forEach(function(k){x[k]=patch[k]});
+  if(d.row)PL.rec.update(d.row.id,{extra:x});else PL.rec.add({mod:"ctrdef",text:id,extra:x});
+  return true;
+}
 function removeDef(id,btn){
   var d=def(id);if(!d)return;
   if(btn.getAttribute("data-sure")!=="1"){btn.setAttribute("data-sure","1");btn.textContent=tl("再按确认");setTimeout(function(){if(btn.isConnected)drawManage()},3000);return}
@@ -236,5 +243,5 @@ PL.module({
     tpl:{"{0} {1}":"{0} {1}","{0} 分钟前":"{0} min ago","{0} 小时 {1} 分前":"{0} h {1} min ago","⚠️ 超过今日上限 {0}":"⚠️ Over today's limit of {0}","快到今日上限 {0}":"Close to today's limit of {0}","🎉 今天的目标达成：{0}":"🎉 Today's target reached: {0}","{0} +{1}":"{0} +{1}","今天共 {0}":"{0} today","已撤销 {0}":"Undid {0}","约 {0}":"≈ {0}","上一次 {0}":"Last {0}","记一次 {0}":"Log one {0}","上限 {0}":"Limit {0}","目标 {0}":"Target {0}","本月约花 {0}（每 {1} {2}）":"About {0} spent this month ({2} per {1})","对照「{0}」分类本月已记 {1}":"Compare: “{0}” category this month {1}","每天上限 {0}":"Daily limit {0}","每天目标 {0}":"Daily target {0}","每 {0} {1}":"{1} per {0}","{0} 个":"{0}","数量 ({0})":"Amount ({0})","已补记 {0}":"Added a missed {0}"}
   }
 });
-PL.counters={log:log,undo:undo,defs:defs,index:index};   /* for other modules and tests */
+PL.counters={log:log,undo:undo,defs:defs,index:index,def:def,patch:patchDef,qty:qty};   /* for other modules and tests */
 })();
