@@ -520,7 +520,10 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
 
 <script>
 (function(){
-var CATS=["Food","Drinks","Car","Living spend","Unnecessary","Smoking","Rent","Toll","Dating","Lifestyle","Saving","Investment","Groceries","Health Care","Transport","Donation","Claim","Internet services","Friends","Shopping","Exercise","Snacks","Family"];
+/* Display order of the categories. New ones can go anywhere here... */
+var CATS=["Food","Drinks","Car","Living spend","Unnecessary","Smoking","Rent","Toll","Dating","Lifestyle","Saving","Investment","Groceries","Health Care","Insurance","Transport","Donation","Claim","Internet services","Friends","Shopping","Exercise","Snacks","Family"];
+/* ...but this list only ever grows at the end: a category's position is part of its stored "must-pay" row id, so it must never move. */
+var CAT_IDS=["Food","Drinks","Car","Living spend","Unnecessary","Smoking","Rent","Toll","Dating","Lifestyle","Saving","Investment","Groceries","Health Care","Transport","Donation","Claim","Internet services","Friends","Shopping","Exercise","Snacks","Family","Insurance"];
 var AVOID={"Smoking":1,"Unnecessary":1,"Drinks":1};
 var SKIP="Skipped";  /* "忍住没买" records live in Expenses with this category; never counted as spending */
 /* spending = real expenses + repayments of "I owe" debts flagged as counting (derived, read-only rows) */
@@ -1271,7 +1274,7 @@ $("payList").addEventListener("click",function(e){
 
 /* ---- free money: net pay minus everything that has to be paid every month ----
    must-pay categories are stored as hidden rows: cat "Must:<Category>", id 9000000 + category index (stable across devices) */
-function mustId(c){return 9000000+CATS.indexOf(c)}
+function mustId(c){return 9000000+CAT_IDS.indexOf(c)}
 function mustSet(){var o={};S.expenses.forEach(function(x){if(x.cat.indexOf("Must:")===0)o[x.cat.slice(5)]=1});return o}
 function isRecurId(id){return id>=2e14&&id<1e15}
 function freeMoney(m){
