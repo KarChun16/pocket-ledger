@@ -144,6 +144,21 @@ function detailClick(e){
   }
 }
 
+/* ---- the 计数器 page (under 时间): every counter at a glance ---- */
+function drawOverview(){
+  var box=$("ctrOvRows");if(!box)return;
+  var ix=index(),t=today(),ym=t.slice(0,7);
+  box.innerHTML=defs().map(function(d){
+    var m=ix[d.id]||{},v=sum(m[t]),days=[],mx=1,mt=0;
+    for(var i=6;i>=0;i--){var dt=addDays(t,-i),s=sum(m[dt]);days.push(s);if(s>mx)mx=s}
+    Object.keys(m).forEach(function(dt){if(dt.slice(0,7)===ym)mt+=sum(m[dt])});
+    var st=state(d,v),goal=d.limit>0&&d.kind!=="none"?' / '+num(d.limit):"";
+    return '<button class="ctrov" data-copen="'+esc(d.id)+'"><span class="ci" aria-hidden="true">'+esc(d.icon)+'</span><span class="ct"><span class="cn">'+esc(d.name)+(d.hide?' <small>'+esc(tl("首页已隐藏"))+'</small>':"")+'</span><span class="cs">'+esc(tl("本月合计 {0}",num(mt)))+'</span></span>'+
+      '<span class="mini" aria-hidden="true">'+days.map(function(x,i){return '<i class="'+(i===6?"now":"")+'" style="height:'+Math.max(2,x/mx*100)+'%"></i>'}).join("")+'</span>'+
+      '<span class="cv '+st+'">'+num(v)+goal+(d.unit?'<small> '+esc(d.unit)+'</small>':"")+'</span></button>';
+  }).join("");
+}
+
 /* ---- settings: manage the counters ---- */
 function kindText(d){return d.kind==="limit"&&d.limit>0?tl("每天上限 {0}",qty(d,d.limit)):d.kind==="goal"&&d.limit>0?tl("每天目标 {0}",qty(d,d.limit)):tl("不设上限")}
 function drawManage(){
@@ -216,12 +231,15 @@ var MANAGE_HTML='<div class="card" id="ctrSet"><h2>计数器</h2><div id="ctrLis
 PL.module({
   id:"counters",
   title:"计数器",
+  page:{group:"time",label:"计数器",html:'<div class="card" id="ctrOverview"><div id="ctrOvRows"></div><p class="msg">每个计数器今天的数量，右边是最近 7 天。点一行看详情、补记和修改；新增或改设置在「更多 → 计数器」。</p></div>'},
+  show:drawOverview,
   home:{id:"ctrHome",html:'<h2 style="margin:0 0 4px;font-size:13px;font-weight:600;color:var(--muted)">今天</h2><div id="ctrRows"></div>',render:drawHome},
   settings:[{id:"ctrSet",label:"计数器",sub:function(){var n=defs().filter(function(d){return !d.hide}).length;return n?tl("{0} 个",n):"没有"},html:MANAGE_HTML}],
   init:function(){
     $("cfc").innerHTML='<option value="">不对照</option>'+CATS.map(function(c){return '<option>'+esc(c)+'</option>'}).join("");
     formFill(null);drawManage();
-    PL.on("data",function(){drawManage();if($("sheetP_ctrDetail")&&sheetOpen("P_ctrDetail"))drawDetail()});
+    PL.on("data",function(){drawManage();if($("sheetP_ctrDetail")&&sheetOpen("P_ctrDetail"))drawDetail();var pg=$("p-counters");if(pg&&!pg.hidden)drawOverview()});
+    $("ctrOverview").addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-copen]");if(b)openDetail(b.getAttribute("data-copen"))});
     $("ctrHome").addEventListener("click",function(e){
       var b=e.target.closest&&e.target.closest("button");if(!b)return;
       var p=b.getAttribute("data-cplus"),m=b.getAttribute("data-cminus"),o=b.getAttribute("data-copen");
@@ -239,8 +257,8 @@ PL.module({
     $("cfk").addEventListener("change",function(){if(this.value!=="none"&&!$("cfl").value){var d=editId?def(editId):null;if(d&&d.limit>0)$("cfl").value=d.limit}});
   },
   en:{
-    exact:{"计数器":"Counters","今天":"Today","抽烟":"Smoking","咖啡":"Coffee","喝水":"Water","根":"cigarettes","杯":"cups","今天还没有":"None yet today","今天的记录":"Today's log","最近 7 天":"Last 7 days","本月合计":"This month","每天平均":"Daily avg","最多的一天":"Best day","补记一笔":"Add a missed one","日期":"Date","时间":"Time","补记":"Add","撤销上一次":"Undo the last one","删除这笔":"Delete this entry","修改":"Edit","删除":"Delete","恢复默认":"Reset to default","显示在首页":"Show on home","从首页隐藏":"Hide from home","再按确认":"Tap again to confirm","不设上限":"No limit","首页已隐藏":"hidden on home","保存修改":"Save changes","添加计数器":"Add counter","修改计数器":"Edit counter","新增计数器":"New counter","请填名称":"Please enter a name","每次的数量要大于 0":"The amount per tap must be above 0","请填每天的上限 / 目标数量":"Please enter the daily limit / target","计数器已修改":"Counter updated","计数器已添加":"Counter added","计数器已删除":"Counter deleted","已恢复默认":"Reset to default","名称":"Name","图标（一个表情）":"Icon (one emoji)","单位":"Unit","例如：次、杯、ml":"e.g. times, cups, ml","例如：吃药、运动、伏地挺身":"e.g. medicine, workout, push-ups","每点一下 +":"Each tap adds","每天的数量":"Daily amount","不设限制":"No limit","设上限（不要超过）":"Set a limit (stay under)","设目标（要达到）":"Set a target (reach it)","上限 / 目标数量":"Limit / target amount","每个的价钱 (RM，可不填)":"Price each (RM, optional)","对照哪个花费分类（可不填）":"Compare with which spending category (optional)","不对照":"Don't compare","首页会显示每个计数器今天的数量，点「+」记一次，点名字看详情和补记。数据存在 Records 分页，所有设备同步。":"The home page shows today's count for each counter. Tap “+” to log one, tap the name for details and to add a missed one. Data lives in the Records sheet and syncs across all your devices.","没有":"None","数量":"Amount","请填日期和时间":"Please enter a date and time","数量要大于 0":"The amount must be above 0","日期或时间不对":"The date or time isn't valid"},
-    tpl:{"{0} {1}":"{0} {1}","{0} 分钟前":"{0} min ago","{0} 小时 {1} 分前":"{0} h {1} min ago","⚠️ 超过今日上限 {0}":"⚠️ Over today's limit of {0}","快到今日上限 {0}":"Close to today's limit of {0}","🎉 今天的目标达成：{0}":"🎉 Today's target reached: {0}","{0} +{1}":"{0} +{1}","今天共 {0}":"{0} today","已撤销 {0}":"Undid {0}","约 {0}":"≈ {0}","上一次 {0}":"Last {0}","记一次 {0}":"Log one {0}","上限 {0}":"Limit {0}","目标 {0}":"Target {0}","本月约花 {0}（每 {1} {2}）":"About {0} spent this month ({2} per {1})","对照「{0}」分类本月已记 {1}":"Compare: “{0}” category this month {1}","每天上限 {0}":"Daily limit {0}","每天目标 {0}":"Daily target {0}","每 {0} {1}":"{1} per {0}","{0} 个":"{0}","数量 ({0})":"Amount ({0})","已补记 {0}":"Added a missed {0}"}
+    exact:{"计数器":"Counters","今天":"Today","抽烟":"Smoking","咖啡":"Coffee","喝水":"Water","根":"cigarettes","杯":"cups","今天还没有":"None yet today","今天的记录":"Today's log","最近 7 天":"Last 7 days","本月合计":"This month","每天平均":"Daily avg","最多的一天":"Best day","补记一笔":"Add a missed one","日期":"Date","时间":"Time","补记":"Add","撤销上一次":"Undo the last one","删除这笔":"Delete this entry","修改":"Edit","删除":"Delete","恢复默认":"Reset to default","显示在首页":"Show on home","从首页隐藏":"Hide from home","再按确认":"Tap again to confirm","不设上限":"No limit","首页已隐藏":"hidden on home","保存修改":"Save changes","添加计数器":"Add counter","修改计数器":"Edit counter","新增计数器":"New counter","请填名称":"Please enter a name","每次的数量要大于 0":"The amount per tap must be above 0","请填每天的上限 / 目标数量":"Please enter the daily limit / target","计数器已修改":"Counter updated","计数器已添加":"Counter added","计数器已删除":"Counter deleted","已恢复默认":"Reset to default","名称":"Name","图标（一个表情）":"Icon (one emoji)","单位":"Unit","例如：次、杯、ml":"e.g. times, cups, ml","例如：吃药、运动、伏地挺身":"e.g. medicine, workout, push-ups","每点一下 +":"Each tap adds","每天的数量":"Daily amount","不设限制":"No limit","设上限（不要超过）":"Set a limit (stay under)","设目标（要达到）":"Set a target (reach it)","上限 / 目标数量":"Limit / target amount","每个的价钱 (RM，可不填)":"Price each (RM, optional)","对照哪个花费分类（可不填）":"Compare with which spending category (optional)","不对照":"Don't compare","首页会显示每个计数器今天的数量，点「+」记一次，点名字看详情和补记。数据存在 Records 分页，所有设备同步。":"The home page shows today's count for each counter. Tap “+” to log one, tap the name for details and to add a missed one. Data lives in the Records sheet and syncs across all your devices.","没有":"None","每个计数器今天的数量，右边是最近 7 天。点一行看详情、补记和修改；新增或改设置在「更多 → 计数器」。":"Today's amount for each counter, with the last 7 days on the right. Tap a row for details, missed entries and edits; add or change counters under More → Counters.","数量":"Amount","请填日期和时间":"Please enter a date and time","数量要大于 0":"The amount must be above 0","日期或时间不对":"The date or time isn't valid"},
+    tpl:{"{0} {1}":"{0} {1}","{0} 分钟前":"{0} min ago","{0} 小时 {1} 分前":"{0} h {1} min ago","⚠️ 超过今日上限 {0}":"⚠️ Over today's limit of {0}","快到今日上限 {0}":"Close to today's limit of {0}","🎉 今天的目标达成：{0}":"🎉 Today's target reached: {0}","{0} +{1}":"{0} +{1}","今天共 {0}":"{0} today","已撤销 {0}":"Undid {0}","约 {0}":"≈ {0}","上一次 {0}":"Last {0}","记一次 {0}":"Log one {0}","上限 {0}":"Limit {0}","目标 {0}":"Target {0}","本月约花 {0}（每 {1} {2}）":"About {0} spent this month ({2} per {1})","对照「{0}」分类本月已记 {1}":"Compare: “{0}” category this month {1}","每天上限 {0}":"Daily limit {0}","每天目标 {0}":"Daily target {0}","每 {0} {1}":"{1} per {0}","本月合计 {0}":"This month {0}","{0} 个":"{0}","数量 ({0})":"Amount ({0})","已补记 {0}":"Added a missed {0}"}
   }
 });
 PL.counters={log:log,undo:undo,defs:defs,index:index,def:def,patch:patchDef,qty:qty};   /* for other modules and tests */

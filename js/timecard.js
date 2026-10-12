@@ -242,12 +242,12 @@ function drawDetail(){
     '<p class="msg">'+esc(tl("抽烟、咖啡、喝水的次数默认来自首页的计数器；这里留空就用默认值，填了就以这里为准（多出来的会显示成「没有记录时间」）。午休留空就用默认值。"))+'</p>';
   body.innerHTML=h;
 }
-function openDetail(){
-  PL.popup("tcDetail","打卡",'<div class="card" id="tcDetail"><div id="tcDetailBody"></div></div>');
+/* the 打卡 page (under 时间): the detail is a page now, not a window */
+function showPage(){
   if(!$("tcDetailBody").getAttribute("data-wired")){$("tcDetailBody").setAttribute("data-wired","1");$("tcDetailBody").addEventListener("click",detailClick);$("tcDetailBody").addEventListener("change",detailChange);$("tcDetailBody").addEventListener("keydown",function(e){if((e.key==="Enter"||e.key===" ")&&e.target.getAttribute&&e.target.getAttribute("data-tlkey")){e.preventDefault();e.target.click()}})}
-  PL.popTitle("tcDetail","打卡");
-  wkOff=0;selDate=today();editKey=null;drawDetail();openPop("tcDetail");
+  wkOff=0;selDate=today();editKey=null;drawDetail();
 }
+function pageOpen(){var p=$("p-timecard");return p&&!p.hidden}
 function detailClick(e){
   var tr=e.target.closest&&e.target.closest("[data-tlkey]");
   if(tr){var k=tr.getAttribute("data-tlkey");editKey=editKey===k?null:k;drawDetail();return}
@@ -354,14 +354,16 @@ function saveSet(){
 PL.module({
   id:"timecard",
   title:"打卡",
+  page:{group:"time",label:"打卡",html:'<div class="card" id="tcDetail"><div id="tcDetailBody"></div></div>'},
+  show:showPage,
   home:{id:"tcHome",html:"",render:drawHome},
   settings:[{id:"tcSet",label:"打卡设置",sub:function(){var c=cfg();return tl("{0} 小时 / 天",c.hoursPerDay)},html:SET_HTML}],
   init:function(){
     fillSet();
-    PL.on("data",function(){fillSet();if($("sheetP_tcDetail")&&sheetOpen("P_tcDetail"))drawDetail()});
+    PL.on("data",function(){fillSet();if(pageOpen()&&!(document.activeElement&&$("tcDetailBody").contains(document.activeElement)&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)))drawDetail()});
     $("tcHome").addEventListener("click",function(e){
       var b=e.target.closest&&e.target.closest("button");if(!b)return;
-      if(b.id==="tcIn")clockIn();else if(b.id==="tcOut")clockOut();else if(b.id==="tcMore")openDetail();
+      if(b.id==="tcIn")clockIn();else if(b.id==="tcOut")clockOut();else if(b.id==="tcMore")tab("timecard");
     });
     SET_IDS.forEach(function(id){$(id).addEventListener("change",saveSet);$(id).addEventListener("input",function(){this.setAttribute("data-dirty","1")})});
     setInterval(function(){if(!document.hidden)tick()},1000);

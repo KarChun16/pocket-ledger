@@ -4,7 +4,7 @@
    events  PL.on(name, fn) / PL.emit(name, arg): "init" "show:<page>" "settings" "synced" "online" "visible" "data" "sheet:close" "pop:open"
    rows    PL.sub(name, fn): the grey summary text on a settings/overview row
    modules PL.module({id, title, page, home, settings, init, en}) adds a page + bottom tab, a home card and settings rows (see below) */
-var PL={_ev:{},_sub:{},_mods:{},ready:false};
+var PL={_ev:{},_sub:{},_mods:{},ready:false,_home:[{id:"homeCard",label:"钱：余额和记账"}]};
 PL.on=function(e,f){(PL._ev[e]=PL._ev[e]||[]).push(f)};
 PL.emit=function(e,a){(PL._ev[e]||[]).slice().forEach(function(f){try{f(a)}catch(x){if(window.console)console.error("PL "+e,x)}})};
 PL.sub=function(name,fn){PL._sub[name]=fn};
@@ -13,8 +13,14 @@ var CKEY="pocketledger.cfg";
 var S={expenses:[],records:[],set:{wage:0,ded:13.46,infl:3,rate:5,years:10},pending:[],setDirty:false};
 var C={url:"",token:""};
 var T={years:10};
-var PAGES=["log","think","save","debt","sum","set"];   /* every page id, in order; modules add theirs before "set" */
-var cur="log",lastMain="log",syncing=false,timer=null,lastErr="",lastOk="",recBackend=null;   /* recBackend: does the sheet backend know Records? (null = not asked yet) */
+/* the bottom bar has four groups; a group with several pages shows them as a switch under the header.
+   Pages keep their old ids; modules add theirs with PL.module({page:{group:"time",label:"..."}}). */
+var GROUPS=[{id:"home",pages:["log"]},{id:"money",pages:["sum","debt","save","think"]},{id:"time",pages:[]},{id:"more",pages:["set"]}];
+var PAGE_LABEL={sum:"总览",debt:"欠款",save:"省下",think:"先别买"};
+var PAGES=["log","think","save","debt","sum","set"];   /* every page id (sections p-<id>); modules add theirs */
+function groupOf(page){for(var i=0;i<GROUPS.length;i++)if(GROUPS[i].pages.indexOf(page)>=0)return GROUPS[i];return GROUPS[0]}
+var lastIn={};   /* the page last visited in each group */
+var cur="log",syncing=false,timer=null,lastErr="",lastOk="",recBackend=null;   /* recBackend: does the sheet backend know Records? (null = not asked yet) */
 
 function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.expenses)S.expenses=o.expenses;if(o&&Array.isArray(o.records))S.records=o.records;if(o&&o.set)for(var k in o.set)S.set[k]=o.set[k];if(o&&o.pending)S.pending=o.pending;S.setDirty=!!(o&&o.setDirty);}}catch(e){}
   try{var c=localStorage.getItem(CKEY);if(c){var p=JSON.parse(c);C.url=p.url||"";C.token=p.token||"";}}catch(e){}}
@@ -199,23 +205,34 @@ function rm0(n){return "RM "+Math.round(n).toLocaleString("en-MY")}
 function today(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 
 /* ---- tabs ---- */
+function drawSubnav(){
+  var g=groupOf(cur),sn=$("subnav");
+  if(g.pages.length>1){
+    sn.hidden=false;
+    sn.innerHTML=g.pages.map(function(p){return '<button role="tab" data-t="'+p+'" aria-selected="'+(p===cur)+'">'+esc(PAGE_LABEL[p]||p)+'</button>'}).join("");
+  }else{sn.hidden=true;sn.innerHTML=""}
+}
 function tab(t){
-  cur=t;
+  var g=groupOf(t);
+  cur=t;lastIn[g.id]=t;
   PAGES.forEach(function(k){$("p-"+k).hidden=k!==t});
-  if(t!=="set")lastMain=t;
-  $("setBtn").textContent=t==="set"?"完成":"⚙ 设置";
-  Array.prototype.forEach.call($("nav").querySelectorAll("button"),function(b){b.setAttribute("aria-selected",b.getAttribute("data-t")===t)});
+  Array.prototype.forEach.call($("nav").querySelectorAll("button"),function(b){b.setAttribute("aria-selected",b.getAttribute("data-g")===g.id)});
+  drawSubnav();
   PL.emit("show:"+t);if(t==="set")settingsView();
   window.scrollTo(0,0);
 }
-$("nav").addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("button[data-t]");if(b)tab(b.getAttribute("data-t"))});
+$("nav").addEventListener("click",function(e){
+  var b=e.target.closest&&e.target.closest("button[data-g]");if(!b)return;
+  var g=GROUPS.filter(function(x){return x.id===b.getAttribute("data-g")})[0];
+  if(g)tab(lastIn[g.id]&&g.pages.indexOf(lastIn[g.id])>=0?lastIn[g.id]:g.pages[0]);
+});
+$("subnav").addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("button[data-t]");if(b)tab(b.getAttribute("data-t"))});
 
 /* ---- settings page ---- */
 function settingsView(){
   PL.emit("settings");syncUI();
 }
 function jumpTo(id){openPop(id)}
-$("setBtn").addEventListener("click",function(){tab(cur==="set"?lastMain:"set")});
 document.addEventListener("click",function(e){
   var g=e.target.closest&&e.target.closest("[data-go]");
   if(g){closeAllSheets();tab(g.getAttribute("data-go"));var j=g.getAttribute("data-jump");if(j)setTimeout(function(){jumpTo(j)},50);return}
@@ -308,7 +325,7 @@ PL.popTitle=function(id,text,icon){
    PL.module({
      id:"counter",                       // unique, lower-case letters/digits
      title:"计数",                        // name (Chinese source text; give an English one in en)
-     page:{tab:{label:"计数",icon:"<svg…>"},html:"<div class='card'>…</div>"},   // optional: a page + bottom tab
+     page:{group:"time",label:"计数",html:"<div class='card'>…</div>"},           // optional: a page, shown in a bottom-bar group ("time" by default)
      home:{id:"counterHome",html:"…",render:function(el){…}},                   // optional: a card on the home page, re-rendered on "show:log" and "data"
      settings:[{id:"counterSet",label:"计数",sub:function(){…},html:"<div class='card' id='counterSet'>…</div>"}],  // optional rows in 设置, each opens its card as a pop-out window
      init:function(){…}, show:function(){…},                                    // optional hooks
@@ -323,11 +340,9 @@ PL.module=function(spec){
     var sec=document.createElement("section");sec.id="p-"+spec.id;sec.hidden=true;sec.innerHTML=spec.page.html||"";
     $("p-set").parentNode.insertBefore(sec,$("p-set"));
     PAGES.splice(PAGES.indexOf("set"),0,spec.id);
-    if(spec.page.tab){
-      var b=document.createElement("button");b.setAttribute("role","tab");b.setAttribute("data-t",spec.id);b.setAttribute("aria-selected","false");
-      b.innerHTML=(spec.page.tab.icon||"")+esc(spec.page.tab.label||spec.title||spec.id);
-      $("nav").querySelector(".in").appendChild(b);
-    }
+    var grp=GROUPS.filter(function(x){return x.id===(spec.page.group||"time")})[0]||GROUPS[2];
+    grp.pages.push(spec.id);PAGE_LABEL[spec.id]=spec.page.label||spec.title||spec.id;
+    if(groupOf(cur)===grp)drawSubnav();                                          /* the switch under the header may need a new button */
     if(spec.show)PL.on("show:"+spec.id,spec.show);
   }
   if(spec.home){
@@ -335,6 +350,7 @@ PL.module=function(spec){
     $("modCards").appendChild(hc);
     var draw=function(){if(spec.home.render)spec.home.render(hc)};
     PL.on("show:log",draw);PL.on("data",draw);draws.push(draw);
+    PL._home.push({id:hc.id,label:spec.home.label||spec.title});applyHome();drawHomeSet();
   }
   (spec.settings||[]).forEach(function(r){
     var card=document.createElement("div");card.innerHTML=r.html||"";card.firstElementChild.id=card.firstElementChild.id||r.id;
@@ -351,3 +367,51 @@ PL.module=function(spec){
   if(PL.ready)start();else PL.on("init",start);
   return spec;
 };
+
+/* ---- the home page: which cards show and in what order (kept on this device) ----
+   every card is a flex item of #p-log; its place is its CSS order. */
+var HOME_KEY="pocketledger.home";
+function homePrefs(){try{return JSON.parse(localStorage.getItem(HOME_KEY)||"{}")||{}}catch(e){return {}}}
+function saveHomePrefs(p){try{localStorage.setItem(HOME_KEY,JSON.stringify(p))}catch(e){}}
+function homeOrder(){
+  var ids=PL._home.map(function(c){return c.id}),o=(homePrefs().order||[]).filter(function(i){return ids.indexOf(i)>=0});
+  ids.forEach(function(i){if(o.indexOf(i)<0)o.push(i)});return o;
+}
+function applyHome(){
+  var p=homePrefs();
+  homeOrder().forEach(function(id,i){var el=$(id);if(!el)return;el.style.order=i;el.classList.toggle("home-off",!!(p.hide&&p.hide[id]))});
+}
+function drawHomeSet(){
+  var box=$("homeList");if(!box)return;
+  var p=homePrefs(),o=homeOrder(),lab={};PL._home.forEach(function(c){lab[c.id]=c.label});
+  box.innerHTML=o.map(function(id,i){
+    var off=!!(p.hide&&p.hide[id]);
+    return '<div class="rrow'+(off?' off':'')+'"><b>'+esc(lab[id]||id)+'</b><div class="acts"><button class="x" data-hup="'+esc(id)+'" aria-label="'+esc(tl("上移"))+'"'+(i===0?" disabled":"")+'>▲</button><button class="x" data-hdn="'+esc(id)+'" aria-label="'+esc(tl("下移"))+'"'+(i===o.length-1?" disabled":"")+'>▼</button>'+
+      '<label class="chk" style="margin:0 0 0 8px"><input type="checkbox" data-hv="'+esc(id)+'" aria-label="'+esc(tl("显示"))+'"'+(off?"":" checked")+'></label></div></div>';
+  }).join("");
+}
+(function(){
+  var card=document.createElement("div");
+  card.innerHTML='<div class="card" id="homeSet"><h2>首页卡片</h2><div id="homeList"></div><p class="msg">决定首页显示哪些卡片、先后顺序。只影响这台设备。</p></div>';
+  $("setHold").appendChild(card.firstElementChild);
+  var btn=document.createElement("button");btn.className="rowbtn";btn.setAttribute("data-pop","homeSet");
+  btn.innerHTML='<span class="rbt"></span><span class="rbsub" data-sub="homecards"></span><span class="rbc" aria-hidden="true">›</span>';
+  btn.querySelector(".rbt").textContent="首页卡片";
+  var lang=$("setRows").querySelector('[data-pop="langCard"]');
+  if(lang&&lang.nextSibling)$("setRows").insertBefore(btn,lang.nextSibling);else $("setRows").appendChild(btn);
+  PL.sub("homecards",function(){var p=homePrefs(),n=PL._home.filter(function(c){return !(p.hide&&p.hide[c.id])}).length;return tl("{0} 张",n)});
+  $("homeSet").addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest("button");if(!b)return;
+    var id=b.getAttribute("data-hup")||b.getAttribute("data-hdn");if(!id)return;
+    var o=homeOrder(),i=o.indexOf(id),j=b.hasAttribute("data-hup")?i-1:i+1;
+    if(i<0||j<0||j>=o.length)return;
+    var t=o[i];o[i]=o[j];o[j]=t;
+    var p=homePrefs();p.order=o;saveHomePrefs(p);applyHome();drawHomeSet();refreshPops();
+  });
+  $("homeSet").addEventListener("change",function(e){
+    var id=e.target.getAttribute&&e.target.getAttribute("data-hv");if(!id)return;
+    var p=homePrefs();p.hide=p.hide||{};if(e.target.checked)delete p.hide[id];else p.hide[id]=1;
+    saveHomePrefs(p);applyHome();drawHomeSet();refreshPops();
+  });
+  PL.on("init",function(){applyHome();drawHomeSet()});
+})();
