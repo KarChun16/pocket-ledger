@@ -1,7 +1,7 @@
 // Network-first for the app shell so updates arrive; cache is only the offline fallback.
 // Cross-origin requests (the Apps Script sync) are never touched.
-var CACHE = "pocketledger-shell-v1";
-var SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/apple-touch-icon.png"];
+var CACHE = "pocketledger-shell-v3";
+var SHELL = ["./", "index.html", "js/i18n-en.js", "js/core.js", "js/records.js", "js/lock.js", "js/money.js", "js/init.js", "manifest.webmanifest", "icons/icon.svg", "icons/icon-192.png", "icons/apple-touch-icon.png"];
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
 });
