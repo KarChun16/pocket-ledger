@@ -319,15 +319,16 @@ var SET_HTML='<div class="card" id="tcSet"><h2>打卡设置</h2><div class="grid
   '<div><label for="tcsCup">一杯水多少 ml（点一下加多少）</label><input id="tcsCup" type="number" inputmode="decimal" min="1" step="any"></div><div><label for="tcsGoal">喝水每天目标 (ml)</label><input id="tcsGoal" type="number" inputmode="decimal" min="0" step="any"></div>'+
   '<div class="full"><label for="tcsCof">咖啡每天上限（杯，0 = 不设）</label><input id="tcsCof" type="number" inputmode="decimal" min="0" step="any"></div></div>'+
   '<div class="msg" id="tcsMsg"></div><p class="msg">下班时间 = 上班 + 每天工时 + 午休 + 抽烟次数 × 每根扣的分钟。每周目标 = 每天工时 × 每周工作天数。设置存在 Records 分页，所有设备同步。</p></div>';
+var SET_IDS=["tcsH","tcsL","tcsD","tcsS","tcsM","tcsO","tcsDrink","tcsCup","tcsGoal","tcsCof"];
 function fillSet(){
   if(!$("tcsH"))return;
-  var c=cfg(),a=document.activeElement;
-  [["tcsH",c.hoursPerDay],["tcsL",c.lunchMin],["tcsD",c.workDays],["tcsS",c.smokeMin]].forEach(function(p){if(a!==$(p[0]))$(p[0]).value=p[1]});
+  var c=cfg(),a=document.activeElement,free=function(id){return a!==$(id)&&!$(id).getAttribute("data-dirty")};   /* never overwrite a field that is being typed in */
+  [["tcsH",c.hoursPerDay],["tcsL",c.lunchMin],["tcsD",c.workDays],["tcsS",c.smokeMin]].forEach(function(p){if(free(p[0]))$(p[0]).value=p[1]});
   $("tcsM").value=c.mode;$("tcsO").checked=!!c.smokeOn;
   var w=PL.counters&&PL.counters.def("water"),cf=PL.counters&&PL.counters.def("coffee");
   if(w&&cf){
     $("tcsDrink").checked=!(w.hide&&cf.hide);
-    if(a!==$("tcsCup"))$("tcsCup").value=w.step;if(a!==$("tcsGoal"))$("tcsGoal").value=w.limit>0?w.limit:0;if(a!==$("tcsCof"))$("tcsCof").value=cf.limit>0?cf.limit:0;
+    if(free("tcsCup"))$("tcsCup").value=w.step;if(free("tcsGoal"))$("tcsGoal").value=w.limit>0?w.limit:0;if(free("tcsCof"))$("tcsCof").value=cf.limit>0?cf.limit:0;
   }
 }
 function saveSet(){
@@ -341,6 +342,7 @@ function saveSet(){
   if(!(goal>=0)||!(cof>=0)){msg.textContent=tl("喝水目标和咖啡上限请填 0 或更大的数字");return}
   msg.textContent="";
   var mode=$("tcsM").value,smokeOn=$("tcsO").checked,hide=!$("tcsDrink").checked;     /* read everything first: saving redraws these fields */
+  SET_IDS.forEach(function(id){$(id).removeAttribute("data-dirty")});
   saveCfg({hoursPerDay:h,lunchMin:l,workDays:d,smokeMin:s,mode:mode,smokeOn:smokeOn});
   if(PL.counters){
     var w=PL.counters.def("water"),cf=PL.counters.def("coffee");
@@ -361,7 +363,7 @@ PL.module({
       var b=e.target.closest&&e.target.closest("button");if(!b)return;
       if(b.id==="tcIn")clockIn();else if(b.id==="tcOut")clockOut();else if(b.id==="tcMore")openDetail();
     });
-    ["tcsH","tcsL","tcsD","tcsS","tcsM","tcsO","tcsDrink","tcsCup","tcsGoal","tcsCof"].forEach(function(id){$(id).addEventListener("change",saveSet)});
+    SET_IDS.forEach(function(id){$(id).addEventListener("change",saveSet);$(id).addEventListener("input",function(){this.setAttribute("data-dirty","1")})});
     setInterval(function(){if(!document.hidden)tick()},1000);
     document.addEventListener("visibilitychange",function(){if(!document.hidden)drawHome($("tcHome"))});
   },

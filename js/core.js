@@ -160,7 +160,8 @@ function syncUI(){
   if(!C.url||!C.token){el.textContent="未连接 Google Sheet（只存在本机）";el.className="sync";return}
   if(lastErr){el.textContent=tl("同步失败，已存本机{0}：稍后会自动重试",n?tl("（{0} 项待同步）",n):"");el.className="sync err";return}
   el.className="sync";
-  el.textContent=syncing?"同步中…":(n?tl("{0} 项待同步",n):(lastOk?tl("已同步 {0}",lastOk):"已连接"));
+  var old=recBackend===false&&S.pending.some(isRecOp);     /* the sheet script does not know Records yet: say so, instead of waiting in silence */
+  el.textContent=syncing?"同步中…":(n?tl("{0} 项待同步",n)+(old?tl("；Apps Script 还不是最新版本"):""):(lastOk?tl("已同步 {0}",lastOk):"已连接"));
 }
 function syncNow(){
   if(!C.url||!C.token||syncing||!navigator.onLine)return Promise.resolve();
