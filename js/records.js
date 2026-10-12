@@ -21,7 +21,12 @@ PL.rec=(function(){
   function put(row){applyOp({op:"radd",row:row});queue({op:"radd",row:row});PL.emit("data");return row}
   var R={
     /* add a record; o = {mod, date?, time? ("now" ok), val?, text?, extra? (object or string)}; returns the row, or null if it is not valid */
-    add:function(o){var r=clean(o||{},newId());return r?put(r):null},
+    add:function(o){
+      o=o||{};
+      var id=o.id===undefined?newId():Number(o.id);   /* an explicit id makes the row "one per thing" (e.g. one clock row per date): every device writes the same row */
+      if(!isFinite(id)||id<=0||id>=1e15)return null;
+      var r=clean(o,id);return r?put(r):null;
+    },
     /* change an existing record (same id = same row everywhere); patch = any of the fields above */
     update:function(id,patch){
       var old=R.get(id);if(!old)return null;

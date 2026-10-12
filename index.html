@@ -208,6 +208,14 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
 .cbtn{width:44px;height:44px;border-radius:99px;border:0;font:inherit;font-size:24px;font-weight:600;cursor:pointer;background:var(--tint);color:var(--accent);flex:none;padding:0;line-height:1}
 .cbtn.plus{background:var(--accent);color:var(--accent-ink)}.cbtn.minus{width:36px;height:36px;font-size:20px}
 .cbtn:disabled{opacity:.35;cursor:default}
+.tcmain{text-align:center;padding:6px 0 0}
+.tcbig{font-size:44px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+.tcbig.tcover{color:var(--warn)}
+.tclabel{font-size:14px;color:var(--muted);margin-top:2px}
+.tcok{color:var(--good);font-weight:600}.tcshort{color:var(--warn);font-weight:600}
+.tcrow{display:grid;grid-template-columns:1.1fr 1.4fr auto auto;gap:8px;align-items:center;width:100%;border:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;text-align:left;padding:10px 6px;border-top:.5px solid var(--line);cursor:pointer;border-radius:8px}
+.tcrow.sel{background:var(--tint)}.tcrow.fut{opacity:.55}.tcrow small{color:var(--muted);font-size:12px}
+.tcw{font-variant-numeric:tabular-nums;font-weight:600}.tco{font-variant-numeric:tabular-nums;min-width:46px;text-align:right;font-size:13px}
 .sheet{position:fixed;inset:0;z-index:50;display:none}
 .sheet.on{display:block}
 #sheetHist{z-index:51}#sheetEntry{z-index:52}
@@ -589,6 +597,7 @@ body.sheet-open{overflow:hidden}
 <script src="js/records.js"></script>
 <script src="js/lock.js"></script>
 <script src="js/money.js"></script>
+<script src="js/timecard.js"></script>
 <script src="js/counters.js"></script>
 <script src="js/init.js"></script>
 </body>
