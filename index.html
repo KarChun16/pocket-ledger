@@ -184,6 +184,24 @@ details.more>summary::-webkit-details-marker{display:none}
 .lkreset{margin-top:12px;padding:12px;border-radius:12px;background:var(--surface);font-size:13px;color:var(--muted);text-align:left}
 body.shield .wrap,body.shield .tabbar{visibility:hidden}
 html.locked .wrap,html.locked .tabbar{visibility:hidden}
+.homebtns{display:flex;gap:10px;margin:14px 0 0}.homebtns .btn{min-height:54px;font-size:18px}
+#insightCard{margin-top:16px}
+.note{display:flex;flex-direction:column;gap:10px;background:var(--surface);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;font-size:15px}
+.note .notebtns{display:flex;gap:8px}
+.note .cmp{padding:5px 0}
+.sheet{position:fixed;inset:0;z-index:50;display:none}
+.sheet.on{display:block}
+#sheetHist{z-index:51}#sheetEntry{z-index:52}
+.shbg{position:absolute;inset:0;background:rgba(0,0,0,.38);animation:fadein .2s ease-out}
+.shpanel{position:absolute;left:0;right:0;bottom:0;max-width:760px;margin:0 auto;max-height:92vh;background:var(--surface);border-radius:20px 20px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -8px 40px rgba(0,0,0,.25);animation:sheetup .3s cubic-bezier(.2,.9,.3,1)}
+.shtall{height:90vh}
+.shbar{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px}
+.shbar h2{margin:0;font-size:20px;font-weight:700;color:var(--ink)}
+.shbody{overflow:auto;padding:4px 16px 18px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+@keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
+@media (min-width:760px){.shpanel{bottom:auto;top:6vh;border-radius:20px;max-width:560px}.shtall{height:88vh}}
+@media (prefers-reduced-motion:reduce){.shpanel,.shbg{animation:none}}
+body.sheet-open{overflow:hidden}
 .brow{display:flex;align-items:center;gap:8px;margin:8px 0}.brow .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brow input{width:110px}
 .cat{margin:12px 0}
 .cat .t{display:flex;justify-content:space-between;font-size:15px}
@@ -203,6 +221,8 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);z-index:60;display:flex;align-items:center;gap:10px;max-width:calc(100vw - 32px);padding:11px 18px 11px 14px;border-radius:99px;background:var(--surface);color:var(--ink);box-shadow:0 8px 28px rgba(0,0,0,.18),0 0 0 .5px var(--line);opacity:0;transform:translate(-50%,-24px) scale(.96);pointer-events:none;transition:opacity .22s,transform .28s cubic-bezier(.2,.9,.3,1.2)}
 .toast.show{opacity:1;transform:translate(-50%,0) scale(1)}
 .toast b{display:block;font-weight:600;font-size:15px}.toast small{display:block;color:var(--muted);font-size:12px}
+.toast small.tw{color:var(--warn);font-weight:600;margin-top:2px}.toast small.tw.bad{color:var(--bad)}
+.toast{border-radius:22px}
 .toast .tick{width:26px;height:26px;flex:none;padding:4px;border-radius:99px;background:var(--good);stroke:#fff;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 .toast .tick path{stroke-dasharray:24;stroke-dashoffset:24}
 .toast.show .tick path{animation:draw .45s .1s ease-out forwards}
@@ -235,58 +255,25 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
   <p class="sync" id="syncBar" role="button" tabindex="0" style="cursor:pointer">未连接 Google Sheet（只存在本机）</p>
 
   <section id="p-log">
-    <div class="card" id="freeMini" hidden>
-      <h2>本月可用余额</h2>
-      <div class="fbig" id="freeMiniNum"></div>
-      <p class="msg" id="freeMiniSub" style="margin:4px 0 0"></p>
+    <div class="card" id="homeCard">
+      <div id="freeMini" hidden>
+        <h2>本月可用余额</h2>
+        <div class="fbig" id="freeMiniNum"></div>
+        <p class="msg" id="freeMiniSub" style="margin:4px 0 0"></p>
+      </div>
+      <div class="homebtns"><button class="btn grow" id="openEntry">＋ 记一笔</button><button class="btn ghost grow" id="openHist">明细</button></div>
+      <div id="insightCard" hidden>
+        <div class="stat" id="homeStats"></div>
+        <ul class="wins" id="homeIns"></ul>
+      </div>
     </div>
-    <div class="card" id="insightCard" hidden>
-      <h2>本月洞察</h2>
-      <div class="stat" id="homeStats"></div>
-      <ul class="wins" id="homeIns"></ul>
+    <div class="note" id="weekBanner" hidden>
+      <span id="wkBannerText"></span>
+      <div class="notebtns"><button class="btn small" id="wkBannerGo">查看总结</button><button class="btn ghost small" id="wkBannerOk">知道了</button></div>
     </div>
-    <div class="card" id="weekBanner" hidden>
-      <h2>每周总结</h2>
-      <p id="wkBannerText" style="margin:0 0 10px"></p>
-      <div class="row"><button class="btn small" id="wkBannerGo">查看总结</button><button class="btn ghost small" id="wkBannerOk">知道了</button></div>
-    </div>
-    <div class="card" id="debtAlert" hidden>
-      <h2>欠款提醒</h2>
+    <div class="note" id="debtAlert" hidden>
       <div id="debtAlertList"></div>
-      <button class="btn ghost small" id="debtGo" style="margin-top:6px">查看欠款</button>
-    </div>
-    <div class="card">
-      <h2>新增一笔</h2>
-      <div class="grid">
-        <div><label for="fd">日期</label><input id="fd" type="date"></div>
-        <div><label for="fa">金额 (RM)</label><input id="fa" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
-        <div class="full"><label for="fi">项目</label><input id="fi" type="text" placeholder="例如：烟、午餐、Toll" maxlength="60"></div>
-        <div class="full"><label for="fc">分类</label><select id="fc"></select></div>
-      </div>
-      <div id="liveHint" class="hint" hidden></div>
-      <div class="row" style="margin-top:14px"><button class="btn grow" id="add">记下来</button><button class="btn good grow" id="skip">我忍住了</button><button class="btn ghost grow" id="cancelEdit" hidden>取消修改</button></div>
-      <div class="msg" id="addMsg"></div>
-    </div>
-    <div class="card" id="budCard" hidden>
-      <h2>本月预算</h2>
-      <div id="budList"></div>
-    </div>
-    <div class="card">
-      <div class="row" style="justify-content:space-between;margin-bottom:6px">
-        <h2 style="margin:0">明细</h2>
-        <select id="lm" style="width:auto;min-height:36px;padding:6px 12px"></select>
-      </div>
-      <input id="fq" type="search" placeholder="搜索项目、分类、金额、日期" autocomplete="off" enterkeyhint="search" style="margin-top:6px">
-      <div class="grid" style="margin-top:8px">
-        <div><select id="fcat" aria-label="分类"><option value="">全部分类</option></select></div>
-        <div><select id="fsort" aria-label="排序"><option value="new">最新在前</option><option value="old">最早在前</option><option value="big">金额大→小</option><option value="small">金额小→大</option></select></div>
-      </div>
-      <details class="more" id="fmore"><summary>金额范围</summary>
-        <div class="grid" style="margin-top:8px"><div><input id="fmin" type="number" inputmode="decimal" step="0.01" min="0" placeholder="最少 RM"></div><div><input id="fmax" type="number" inputmode="decimal" step="0.01" min="0" placeholder="最多 RM"></div></div>
-      </details>
-      <div class="fsum" id="fsum" hidden><span id="fsumText"></span><button id="fclear" type="button">清除筛选</button></div>
-      <div id="list" style="margin-top:6px"></div>
-      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn ghost small" id="fmoreBtn" hidden>显示更多</button></div>
+      <div class="notebtns"><button class="btn ghost small" id="debtGo">查看欠款</button></div>
     </div>
   </section>
 
@@ -504,6 +491,47 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
   </section>
 </div>
 
+
+<div class="sheet" id="sheetHist" role="dialog" aria-modal="true" aria-labelledby="shHistTitle">
+  <div class="shbg" data-close="Hist"></div>
+  <div class="shpanel shtall">
+    <div class="shbar"><h2 id="shHistTitle">明细</h2><button class="lkbtn" data-close="Hist" style="margin:0">完成</button></div>
+    <div class="shbody">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <span class="msg" style="margin:0">月份</span>
+        <select id="lm" style="width:auto;min-height:36px;padding:6px 12px"></select>
+      </div>
+      <input id="fq" type="search" placeholder="搜索项目、分类、金额、日期" autocomplete="off" enterkeyhint="search" style="margin-top:6px">
+      <div class="grid" style="margin-top:8px">
+        <div><select id="fcat" aria-label="分类"><option value="">全部分类</option></select></div>
+        <div><select id="fsort" aria-label="排序"><option value="new">最新在前</option><option value="old">最早在前</option><option value="big">金额大→小</option><option value="small">金额小→大</option></select></div>
+      </div>
+      <details class="more" id="fmore"><summary>金额范围</summary>
+        <div class="grid" style="margin-top:8px"><div><input id="fmin" type="number" inputmode="decimal" step="0.01" min="0" placeholder="最少 RM"></div><div><input id="fmax" type="number" inputmode="decimal" step="0.01" min="0" placeholder="最多 RM"></div></div>
+      </details>
+      <div class="fsum" id="fsum" hidden><span id="fsumText"></span><button id="fclear" type="button">清除筛选</button></div>
+      <div id="list" style="margin-top:6px"></div>
+      <div class="row" style="justify-content:center;margin-top:8px"><button class="btn ghost small" id="fmoreBtn" hidden>显示更多</button></div>
+    </div>
+  </div>
+</div>
+<div class="sheet" id="sheetEntry" role="dialog" aria-modal="true" aria-labelledby="shEntryTitle">
+  <div class="shbg" data-close="Entry"></div>
+  <div class="shpanel">
+    <div class="shbar"><h2 id="shEntryTitle">记一笔</h2><button class="lkbtn" data-close="Entry" style="margin:0">取消</button></div>
+    <div class="shbody">
+            <div class="grid">
+        <div><label for="fd">日期</label><input id="fd" type="date"></div>
+        <div><label for="fa">金额 (RM)</label><input id="fa" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div class="full"><label for="fi">项目</label><input id="fi" type="text" placeholder="例如：烟、午餐、Toll" maxlength="60"></div>
+        <div class="full"><label for="fc">分类</label><select id="fc"></select></div>
+      </div>
+      <div id="liveHint" class="hint" hidden></div>
+      <div class="row" style="margin-top:14px"><button class="btn grow" id="add">记下来</button><button class="btn good grow" id="skip">我忍住了</button><button class="btn ghost grow" id="cancelEdit" hidden>取消修改</button></div>
+      <div class="msg" id="addMsg"></div>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="lock" id="lock" role="dialog" aria-modal="true" aria-labelledby="lkTitle">
   <div class="lk">
@@ -525,7 +553,7 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
   </div>
 </div>
 <nav class="tabbar" role="tablist" id="nav"><div class="in">
-  <button role="tab" data-t="log" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/></svg>记账</button>
+  <button role="tab" data-t="log" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7v8a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>首页</button>
   <button role="tab" data-t="think" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg>先别买</button>
   <button role="tab" data-t="save" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>省下</button>
   <button role="tab" data-t="debt" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8h11l-3-3M17 16H6l3 3"/></svg>欠款</button>
@@ -566,11 +594,11 @@ function saveCfg(){try{localStorage.setItem(CKEY,JSON.stringify(C));}catch(e){}}
 /* ---- feedback: toast after saving, celebration after a skipped purchase ---- */
 var toastTimer=null,celeTimer=null;
 function reduceMotion(){try{return window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches}catch(e){return false}}
-function toast(title,sub){
+function toast(title,sub,warn,bad){
   var el=$("toast");
-  el.innerHTML='<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><div><b>'+esc(title)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</div>';
+  el.innerHTML='<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg><div><b>'+esc(title)+'</b>'+(sub?'<small>'+esc(sub)+'</small>':'')+(warn?'<small class="tw'+(bad?" bad":"")+'">'+esc(warn).replace(/\n/g,"<br>")+'</small>':'')+'</div>';
   el.classList.remove("show");void el.offsetWidth;el.classList.add("show");
-  clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove("show")},2100);
+  clearTimeout(toastTimer);toastTimer=setTimeout(function(){el.classList.remove("show")},warn?5200:2100);
 }
 var CHEERS=["每一次忍住，都是在给未来的自己存钱。","意志力 +1！","今天的你，比昨天更自由。","小小的坚持，会变成大大的复利。","钱留住了，未来更轻松。","你做到了，继续保持！","忍住的不是钱，是主动权。"];
 var MILESTONES=[100,200,500,1000,2000,5000,10000,20000];
@@ -599,6 +627,59 @@ function celebrate(amt,before,after,count,goalLine,goalHit){
 document.addEventListener("pointerdown",function(){if(document.getElementById("celebrate"))endCelebrate()},true);
 document.addEventListener("keydown",function(){if(document.getElementById("celebrate"))endCelebrate()},true);
 
+/* ---- pop-out windows (bottom sheets): 记一笔 and 明细 ---- */
+var sheetStack=[],sheetOpener=null;
+function sheetOpen(name){return sheetStack.indexOf(name)>=0}
+function openSheet(name,opener){
+  var el=$("sheet"+name);if(!el)return;
+  if(!sheetOpen(name)){sheetStack.push(name);el.classList.add("on");sheetOpener=opener||document.activeElement}
+  document.body.classList.add("sheet-open");applyInert();
+  var first=name==="Entry"?$("fa"):$("fq");
+  setTimeout(function(){if(sheetOpen(name)&&first&&first.focus)first.focus()},60);
+}
+function closeSheet(name){
+  var i=sheetStack.indexOf(name);if(i<0)return;
+  sheetStack.splice(i,1);$("sheet"+name).classList.remove("on");
+  if(name==="Entry"&&typeof editId!=="undefined"&&editId!==null)endEdit();
+  if(!sheetStack.length)document.body.classList.remove("sheet-open");
+  applyInert();
+  var o=sheetOpener;if(!sheetStack.length&&o&&o.isConnected&&o.focus&&!locked)try{o.focus()}catch(e){}
+}
+function closeAllSheets(){sheetStack.slice().reverse().forEach(closeSheet)}
+Array.prototype.forEach.call(document.querySelectorAll("[data-close]"),function(b){b.addEventListener("click",function(){closeSheet(b.getAttribute("data-close"))})});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&sheetStack.length&&!padState){closeSheet(sheetStack[sheetStack.length-1]);e.preventDefault()}
+});
+/* keep Tab / Shift+Tab inside the top window, like a proper modal dialog */
+function sheetFocusables(top){
+  return Array.prototype.filter.call(top.querySelectorAll('button,input,select,textarea,summary,[tabindex]:not([tabindex="-1"])'),function(x){
+    if(x.disabled||x.getClientRects().length===0)return false;
+    for(var d=x.closest("details");d;d=d.parentElement&&d.parentElement.closest("details")){if(!d.open&&!(x.tagName==="SUMMARY"&&x.parentNode===d))return false}   /* inside a folded section */
+    return true;
+  });
+}
+var lastShift=false;
+document.addEventListener("keydown",function(e){
+  if(e.key!=="Tab")return;
+  lastShift=e.shiftKey;
+  if(!sheetStack.length||padState)return;
+  var top=$("sheet"+sheetStack[sheetStack.length-1]),els=sheetFocusables(top);
+  if(!els.length)return;
+  var first=els[0],last=els[els.length-1],act=document.activeElement,inside=top.contains(act);
+  if(e.shiftKey&&(act===first||!inside)){e.preventDefault();last.focus()}
+  else if(!e.shiftKey&&(act===last||!inside)){e.preventDefault();first.focus()}
+},true);
+/* safety net for browsers whose Tab order differs (Safari skips buttons by default): focus may never leave the window */
+document.addEventListener("focusout",function(){
+  if(!sheetStack.length||padState)return;
+  setTimeout(function(){
+    if(!sheetStack.length||padState)return;
+    var top=$("sheet"+sheetStack[sheetStack.length-1]);
+    if(top.contains(document.activeElement))return;
+    var els=sheetFocusables(top);if(els.length)(lastShift?els[els.length-1]:els[0]).focus();
+  },0);
+},true);
+
 /* ---- sync: local-first, pending ops are replayed idempotently (add = upsert by id, del by id) ---- */
 function applyOp(op){
   if(op.op==="add"){S.expenses=S.expenses.filter(function(x){return String(x.id)!==String(op.row.id)});S.expenses.push(op.row)}
@@ -612,7 +693,7 @@ function syncUI(){
   el.className="sync";
   el.textContent=syncing?"同步中…":(n?n+" 项待同步":(lastOk?"已同步 "+lastOk:"已连接"));
 }
-function setBud(k,v){S.set["bud_"+k]=v>0?v:0;S.setDirty=true;queue();syncUI();budgetView();if(cur==="sum")sumView()}
+function setBud(k,v){S.set["bud_"+k]=v>0?v:0;S.setDirty=true;queue();syncUI();homeView();if(cur==="sum")sumView()}
 function budSetView(force){
   if(document.activeElement!==$("bt"))$("bt").value=S.set.bud_TOTAL>0?S.set.bud_TOTAL:"";
   if(document.activeElement!==$("ba"))$("ba").value=S.set.bud_AVOID>0?S.set.bud_AVOID:"";
@@ -698,7 +779,9 @@ function fillMonths(sel,keep){
 }
 var LIMIT=200,shown=LIMIT;
 function listView(){
-  budgetView();debtAlertView();weekBannerView();freeMiniView();homeView();
+  var cm0=today().slice(0,7),n0=spent().filter(function(x){return x.date.slice(0,7)===cm0}).length;
+  $("openHist").textContent=n0?"明细 · "+n0+" 笔":"明细";$("openHist").title=n0?"本月 "+n0+" 笔":"";
+  debtAlertView();weekBannerView();freeMiniView();homeView();
   var cur=$("lm").value;
   fillMonths($("lm"));
   $("lm").insertAdjacentHTML("afterbegin",'<option value="all">全部月份</option>');
@@ -751,7 +834,7 @@ $("list").addEventListener("click",function(e){
   var d=e.target.getAttribute("data-del"),t=e.target.getAttribute("data-think"),ed=e.target.getAttribute("data-edit");
   if(ed){var r=S.expenses.filter(function(y){return String(y.id)===ed})[0];if(r)startEdit(r)}
   if(d){if(editId===d)endEdit();S.expenses=S.expenses.filter(function(x){return String(x.id)!==d});queue({op:"del",id:+d});listView();syncUI();}
-  if(t){var x=S.expenses.filter(function(y){return String(y.id)===t})[0];if(x){$("ta").value=x.amt;$("tf").value="once";tab("think");}}
+  if(t){var x=S.expenses.filter(function(y){return String(y.id)===t})[0];if(x){$("ta").value=x.amt;$("tf").value="once";closeAllSheets();tab("think");}}
 });
 $("lm").addEventListener("change",function(){shown=LIMIT;listView()});
 /* ---- budgets: settings bud_TOTAL / bud_AVOID / bud_<Category> (monthly, RM) ---- */
@@ -775,7 +858,10 @@ function renderBudget(listEl,cardEl,rows){
     return '<div class="bud"><div class="t"><span>'+esc(r.label)+'</span><span class="amt">'+rm0(r.used)+' / '+rm0(r.b)+'</span></div><div class="bar"><i class="'+r.state+'" style="width:'+Math.min(100,r.pct)+'%"></i></div><div class="s"><span class="st '+r.state+'">'+st+'</span><span class="st '+r.state+'">'+Math.round(r.pct)+'%</span></div></div>';
   }).join("");
 }
-function budgetView(){renderBudget($("budList"),$("budCard"),budgetRows(today().slice(0,7)))}
+
+function budgetWarnText(rows){
+  return rows.map(function(r){return (r.state==="over"?"⚠️ 超预算：":"⚠️ 快到预算：")+r.label+" 本月会到 "+rm0(r.used)+" / "+rm0(r.b)+"（"+Math.round(r.pct)+"%）"}).join("\n");
+}
 function budgetWarnHtml(rows){
   return rows.map(function(r){return (r.state==="over"?"⚠️ 超预算：":"⚠️ 快到预算：")+esc(r.label)+" 本月会到 <b>"+rm0(r.used)+" / "+rm0(r.b)+"（"+Math.round(r.pct)+"%）</b>"}).join("<br>");
 }
@@ -795,18 +881,20 @@ function hint(){
 $("fa").addEventListener("input",hint);$("fc").addEventListener("change",hint);
 var editId=null;
 function startEdit(r){
-  editId=String(r.id);
+  editId=String(r.id);$("shEntryTitle").textContent="修改这一笔";
   $("fd").value=r.date;$("fa").value=r.amt;$("fi").value=r.item;
   if(![].some.call($("fc").options,function(o){return o.value===r.cat}))$("fc").appendChild(new Option(r.cat,r.cat));
   $("fc").value=r.cat;
   $("add").textContent="保存修改";$("cancelEdit").hidden=false;$("skip").hidden=true;$("addMsg").textContent="正在修改这一笔";
-  hint();window.scrollTo({top:0,behavior:"smooth"});
+  hint();openSheet("Entry");
 }
 function endEdit(){
-  editId=null;$("add").textContent="记下来";$("cancelEdit").hidden=true;$("skip").hidden=false;
+  editId=null;$("shEntryTitle").textContent="记一笔";$("add").textContent="记下来";$("cancelEdit").hidden=true;$("skip").hidden=false;
   $("fa").value="";$("fi").value="";$("fd").value=today();$("liveHint").hidden=true;$("addMsg").textContent="";
 }
-$("cancelEdit").addEventListener("click",endEdit);
+$("cancelEdit").addEventListener("click",function(){endEdit();closeSheet("Entry")});
+$("openEntry").addEventListener("click",function(){if(editId!==null)endEdit();openSheet("Entry",this)});
+$("openHist").addEventListener("click",function(){openSheet("Hist",this);renderList()});
 $("add").addEventListener("click",function(){
   var a=parseFloat($("fa").value),it=$("fi").value.trim(),d=$("fd").value||today();
   if(!(a>0)||!it){$("addMsg").textContent="请填金额和项目";return}
@@ -816,11 +904,10 @@ $("add").addEventListener("click",function(){
   S.expenses.push(rec);queue({op:"add",row:rec});syncUI();
   if(editing)endEdit();
   $("fa").value="";$("fi").value="";$("liveHint").hidden=true;$("addMsg").textContent="";
-  toast(editing?"修改成功":"记账成功",rec.cat+" · "+rm(rec.amt));
   $("lm").value=d.slice(0,7);listView();
   var w=budgetRows(d.slice(0,7)).filter(function(r){return r.state!=="ok"&&(r.key==="TOTAL"||r.key===rec.cat||(r.key==="AVOID"&&AVOID[rec.cat]))});
-  if(w.length){var h=$("liveHint");h.className="hint"+(w.some(function(r){return r.state==="over"})?" bad":"");h.innerHTML=budgetWarnHtml(w);h.hidden=false;
-    clearTimeout(window.__bw);window.__bw=setTimeout(function(){if(!$("fa").value)h.hidden=true},7000)}
+  closeSheet("Entry");
+  toast(editing?"修改成功":"记账成功",rec.cat+" · "+rm(rec.amt),w.length?budgetWarnText(w):"",w.some(function(r){return r.state==="over"}));
 });
 
 $("skip").addEventListener("click",function(){
@@ -834,6 +921,7 @@ $("skip").addEventListener("click",function(){
   var gb=goalProgress(tot-rec.amt),ga=goalProgress(tot),hit=ga.filter(function(g,i){return g.done&&!gb[i].done}),nxt=ga.filter(function(g){return !g.done})[0],line="";
   if(hit.length)line="🎯 目标达成："+hit.map(function(g){return esc(g.name)}).join("、")+"！";
   else if(nxt)line="距离「"+esc(nxt.name)+"」还差 "+rm0(nxt.target-nxt.saved)+"（已完成 "+Math.floor(nxt.saved/nxt.target*100)+"%）";
+  closeSheet("Entry");
   celebrate(rec.amt,tot-rec.amt,tot,n,line,hit.length>0);
 });
 
@@ -958,10 +1046,10 @@ function debtStatus(d){
 function debtAlertView(){
   var due=debts().filter(function(d){return !d.settled&&d.days!==null&&d.days<=7}).sort(function(a,b){return a.days-b.days});
   $("debtAlert").hidden=!due.length;
-  $("debtAlertList").innerHTML=due.map(function(d){
+  $("debtAlertList").innerHTML=due.slice(0,3).map(function(d){
     var st=debtStatus(d);
     return '<div class="cmp"><span class="n">'+(d.dir==="owe"?"我欠 ":"欠我 ")+esc(d.name)+'</span><span class="v">'+(d.cur==="MYR"?rm0(d.left):cm(d.cur,d.left))+'<small class="st '+st.c+'">'+st.t+'</small></span></div>';
-  }).join("");
+  }).join("")+(due.length>3?'<div class="msg" style="margin:4px 0 0">还有 '+(due.length-3)+' 笔也快到期，点下面看全部</div>':"");
 }
 $("debtGo").addEventListener("click",function(){tab("debt")});
 function debtItem(d){
@@ -1389,7 +1477,7 @@ function homeInsights(){
   if(gl)out.push({lv:1,t:"距离「"+esc(gl.name)+"」还差 "+rm0(gl.target-gl.saved)+"（已完成 "+Math.floor(gl.saved/gl.target*100)+"%）"});
   var soon=addDays(t,2),rc=recurs().filter(function(r){return r.active&&recurNext(r)>=t&&recurNext(r)<=soon});
   if(rc.length)out.push({lv:1,t:"接下来 3 天会自动记账："+rc.map(function(r){return esc(r.name)+" "+rm0(r.amt)}).join("、")});
-  return out.map(function(o,i){o.i=i;return o}).sort(function(a,b){return b.lv-a.lv||a.i-b.i}).slice(0,4);
+  return out.map(function(o,i){o.i=i;return o}).sort(function(a,b){return b.lv-a.lv||a.i-b.i}).slice(0,3);
 }
 function homeView(){
   var t=today(),m=t.slice(0,7),has=spent().length>0||salaryFor(m).wage>0;
@@ -1759,7 +1847,14 @@ function pbkdf2(pin,salt,iter){
 function hashPin(pin){var salt=crypto.getRandomValues(new Uint8Array(16)),iter=150000;return pbkdf2(pin,salt,iter).then(function(h){return {hash:h,salt:b64(salt),iter:iter,len:pin.length}})}
 function checkPin(pin){return pbkdf2(pin,unb64(L.salt),L.iter).then(function(h){return h===L.hash})}
 function waitLeft(){return L&&L.until>Date.now()?Math.ceil((L.until-Date.now())/1000):0}
-function setInert(on){[document.querySelector(".wrap"),$("nav"),$("toast")].forEach(function(el){if(!el)return;if(on){el.setAttribute("inert","");el.setAttribute("aria-hidden","true")}else{el.removeAttribute("inert");el.removeAttribute("aria-hidden")}})}
+var lockInert=false;
+function setInert(on){lockInert=on;applyInert()}
+function applyInert(){
+  var bg=lockInert||sheetStack.length>0;
+  [document.querySelector(".wrap"),$("nav")].forEach(function(el){if(!el)return;if(bg){el.setAttribute("inert","");el.setAttribute("aria-hidden","true")}else{el.removeAttribute("inert");el.removeAttribute("aria-hidden")}});
+  var t=$("toast");if(t){if(lockInert){t.setAttribute("inert","");t.setAttribute("aria-hidden","true")}else{t.removeAttribute("inert");t.removeAttribute("aria-hidden")}}
+  var h=$("sheetHist");if(h){var under=sheetStack.length>1&&sheetStack[sheetStack.length-1]!=="Hist";if(under)h.setAttribute("inert","");else h.removeAttribute("inert")}
+}
 function padRender(){
   var st=padState;if(!st)return;
   var n=st.free?Math.max(st.buf.length,PIN_MIN):st.len;
@@ -1825,6 +1920,7 @@ function padPress(k){
 function prompt2(o){return new Promise(function(resolve){o.resolve=resolve;o.cancel=o.mode!=="unlock";padShow(o)})}
 function lockNow(){
   if(!L)return;
+  closeAllSheets();
   locked=true;document.documentElement.classList.add("locked");
   endCelebrate();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
   document.body.classList.remove("shield");
