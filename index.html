@@ -156,6 +156,9 @@ details.more>summary::-webkit-details-marker{display:none}
   body.print-year #yearCard>.msg,body.print-year #yearCard #yrText,body.print-year #yearCard #yrSel{display:none!important}
   body.print-year #yearCard .bar i{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+.hbtns{display:flex;gap:8px;flex:none}
+#setNav .chip{background:var(--surface)}
+.pgtitle{font-size:28px;font-weight:700;letter-spacing:-.02em;margin:0 0 12px;color:var(--ink)}
 .hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .lkbtn{border:0;background:var(--tint);color:var(--accent);font:inherit;font-size:13px;font-weight:600;border-radius:99px;padding:7px 12px;cursor:pointer;margin-top:6px;white-space:nowrap}
 .lock{position:fixed;inset:0;z-index:200;background:var(--bg);display:none;align-items:center;justify-content:center;overflow:auto;padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom)}
@@ -228,8 +231,8 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
 </head>
 <body>
 <div class="wrap">
-  <div class="hdr"><h1>Pocket Ledger</h1><button class="lkbtn" id="lockBtn" hidden>🔒 锁定</button></div>
-  <p class="sync" id="syncBar">未连接 Google Sheet（只存在本机）</p>
+  <div class="hdr"><h1>Pocket Ledger</h1><div class="hbtns"><button class="lkbtn" id="lockBtn" hidden>🔒 锁定</button><button class="lkbtn" id="setBtn" aria-label="设置">⚙ 设置</button></div></div>
+  <p class="sync" id="syncBar" role="button" tabindex="0" style="cursor:pointer">未连接 Google Sheet（只存在本机）</p>
 
   <section id="p-log">
     <div class="card" id="freeMini" hidden>
@@ -302,7 +305,7 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
     </div>
     <div class="card" id="res"></div>
     <div class="card"><h2>增长曲线</h2><div id="chart"></div><p class="msg">虚线 = 你实际投入的本金。三条线 = 3% / 5% / 7%。</p></div>
-    <div class="card"><p class="msg" style="margin:0">假设：按月复利，每月月底存入；通膨默认 3%（在「总览」可改）。这是简单估算，不是投资建议，实际回报会波动，也可能亏损。</p></div>
+    <div class="card"><p class="msg" style="margin:0">假设：按月复利，每月月底存入；通膨默认 3%（在「设置」可改）。这是简单估算，不是投资建议，实际回报会波动，也可能亏损。</p></div>
   </section>
 
   <section id="p-save" hidden>
@@ -375,10 +378,7 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
     <div class="card" id="freeCard">
       <h2 id="freeTitle">能自由使用的钱</h2>
       <div id="freeBody"></div>
-      <details class="more" id="mustMore"><summary>设置必花分类</summary>
-        <p class="msg" style="margin:8px 0">勾选的分类，每个月的支出都算「必花」（比如房租、网费、保险）。自动记账的固定支出，以及欠款的还款，不用勾也会算进必花。</p>
-        <div class="chips" id="mustChips"></div>
-      </details>
+      <button class="btn ghost small" data-go="set" data-jump="mustCard" style="margin-top:10px">设置必花分类</button>
     </div>
     <div class="card" id="budCard2" hidden>
       <h2 id="budTitle2">预算</h2>
@@ -393,8 +393,36 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
       <h2>最近 6 个月</h2>
       <div id="trend"></div>
     </div>
-    <div class="card">
-      <h2>设置</h2>
+    <div class="card" id="yearCard">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px">
+        <h2 id="yrTitle" style="margin:0">年度报表</h2>
+        <select id="yrSel" style="width:auto;min-height:36px;padding:6px 12px" aria-label="年份"></select>
+      </div>
+      <div id="yrBody"></div>
+      <div class="ybtns">
+        <button class="btn small" id="yrCopy">复制汇总 CSV</button>
+        <button class="btn ghost small" id="yrDlSum">下载汇总</button>
+        <button class="btn ghost small" id="yrDlTx">下载明细</button>
+        <button class="btn ghost small" id="yrPrint">打印 / 存成 PDF</button>
+      </div>
+      <textarea id="yrText" rows="3" readonly hidden style="margin-top:10px" aria-label="汇总 CSV"></textarea>
+      <div class="msg" id="yrMsg"></div>
+      <p class="msg">汇总 = 逐月收入、支出、结余加分类占比，可以直接贴进 Excel 或 Google Sheet。明细 = 这一年的每一笔支出（含自动记账的固定支出和算进支出的还款），用 Excel 打开中文不会乱码。</p>
+    </div>
+  </section>
+
+  <section id="p-set" hidden>
+    <h2 class="pgtitle">设置</h2>
+    <div class="chips" id="setNav" style="margin-bottom:16px">
+      <button class="chip" data-jump="payCard">薪水</button>
+      <button class="chip" data-jump="budSetCard">预算</button>
+      <button class="chip" data-jump="mustCard">必花</button>
+      <button class="chip" data-jump="recCard">固定支出</button>
+      <button class="chip" data-jump="lockCard">应用锁</button>
+      <button class="chip" data-jump="syncCard">同步与备份</button>
+    </div>
+    <div class="card" id="payCard">
+      <h2>薪水与通膨</h2>
       <div class="grid">
         <div class="full"><label for="swm">薪水从哪个月起生效（格式 2026-10）</label><input id="swm" type="month" placeholder="2026-10"></div>
         <div><label for="sw">每月净薪水 (RM)</label><input id="sw" type="number" inputmode="decimal" step="0.01" min="0"></div>
@@ -406,7 +434,7 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
       <p class="msg">改薪水或固定扣除时，会从上面选的月份起生效（默认本月），之前的月份保持原来的数字，所以过去的 Money Left 和「能自由使用」不会被改乱。想补记过去的调整，把生效月份改成那个月再填。</p>
       <p class="msg">「不必要」= Smoking、Unnecessary、Drinks。Money Left = 薪水 − 固定扣除 − 总支出。</p>
     </div>
-    <div class="card">
+    <div class="card" id="budSetCard">
       <h2>每月预算</h2>
       <div class="grid">
         <div><label for="bt">总预算 (RM)</label><input id="bt" type="number" inputmode="decimal" step="1" min="0" placeholder="不设就留空"></div>
@@ -415,6 +443,11 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
       <div id="bcl" style="margin-top:6px"></div>
       <div class="row" style="margin-top:10px"><select id="bcs" style="flex:1;width:auto"></select><input id="bcv" type="number" inputmode="decimal" step="1" min="0" placeholder="RM" style="width:100px"><button class="btn small" id="bca">添加</button></div>
       <p class="msg">用到 80% 变橙色提醒，超过 100% 变红。「不必要」= Smoking、Unnecessary、Drinks 合计。只算当月支出，「我忍住了」不算。</p>
+    </div>
+    <div class="card" id="mustCard">
+      <h2>必花分类</h2>
+      <p class="msg" style="margin:0 0 10px">勾选的分类，每个月的支出都算「必花」（比如房租、网费、保险），会从「能自由使用的钱」里先扣掉。自动记账的固定支出，以及欠款的还款，不用勾也会算进必花。</p>
+      <div class="chips" id="mustChips"></div>
     </div>
     <div class="card" id="recCard">
       <h2 id="rtitle">每月固定支出</h2>
@@ -436,7 +469,7 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
       <div id="lockBody"></div>
       <p class="msg">这是防止别人随手翻看的隐私锁，不是银行级加密：数据仍保存在这台设备的浏览器里，所以设备本身也请设好锁屏密码。每台设备各自设置，PIN 不会同步，也不会离开这台设备。</p>
     </div>
-    <div class="card">
+    <div class="card" id="syncCard">
       <h2>同步 (Google Sheet)</h2>
       <p class="msg" style="margin-top:0">填入你个人 Apps Script 的网址和密钥。只保存在这台设备的浏览器里，不会写进代码。</p>
       <div class="grid">
@@ -446,23 +479,7 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
       <div class="row" style="margin-top:10px"><button class="btn small" id="cs">保存并同步</button><button class="btn ghost small" id="cx">断开</button></div>
       <div class="msg" id="syncMsg"></div>
     </div>
-    <div class="card" id="yearCard">
-      <div class="row" style="justify-content:space-between;margin-bottom:6px">
-        <h2 id="yrTitle" style="margin:0">年度报表</h2>
-        <select id="yrSel" style="width:auto;min-height:36px;padding:6px 12px" aria-label="年份"></select>
-      </div>
-      <div id="yrBody"></div>
-      <div class="ybtns">
-        <button class="btn small" id="yrCopy">复制汇总 CSV</button>
-        <button class="btn ghost small" id="yrDlSum">下载汇总</button>
-        <button class="btn ghost small" id="yrDlTx">下载明细</button>
-        <button class="btn ghost small" id="yrPrint">打印 / 存成 PDF</button>
-      </div>
-      <textarea id="yrText" rows="3" readonly hidden style="margin-top:10px" aria-label="汇总 CSV"></textarea>
-      <div class="msg" id="yrMsg"></div>
-      <p class="msg">汇总 = 逐月收入、支出、结余加分类占比，可以直接贴进 Excel 或 Google Sheet。明细 = 这一年的每一笔支出（含自动记账的固定支出和算进支出的还款），用 Excel 打开中文不会乱码。</p>
-    </div>
-    <div class="card">
+    <div class="card" id="bkCard">
       <h2>备份</h2>
       <p class="msg" style="margin-top:0">换设备或清浏览器数据前，先复制备份文本存起来。</p>
       <div class="row"><button class="btn ghost small" id="exp">复制 CSV 备份</button><button class="btn ghost small" id="imp">从下面的文字导入</button><button class="btn ghost small" id="clr">清空全部</button></div>
@@ -522,7 +539,7 @@ var CKEY="pocketledger.cfg";
 var S={expenses:[],set:{wage:0,ded:13.46,infl:3,rate:5,years:10},pending:[],setDirty:false};
 var C={url:"",token:""};
 var T={years:10};
-var cur="log",syncing=false,timer=null,lastErr="",lastOk="";
+var cur="log",lastMain="log",syncing=false,timer=null,lastErr="",lastOk="";
 
 function load(){try{var r=localStorage.getItem(KEY);if(r){var o=JSON.parse(r);if(o&&o.expenses)S.expenses=o.expenses;if(o&&o.set)for(var k in o.set)S.set[k]=o.set[k];if(o&&o.pending)S.pending=o.pending;S.setDirty=!!(o&&o.setDirty);}}catch(e){}
   try{var c=localStorage.getItem(CKEY);if(c){var p=JSON.parse(c);C.url=p.url||"";C.token=p.token||"";}}catch(e){}}
@@ -643,9 +660,11 @@ function pv(x,years){return x/Math.pow(1+(+S.set.infl||0)/100,years)}
 /* ---- tabs ---- */
 function tab(t){
   cur=t;
-  ["log","think","save","debt","sum"].forEach(function(k){$("p-"+k).hidden=k!==t});
+  ["log","think","save","debt","sum","set"].forEach(function(k){$("p-"+k).hidden=k!==t});
+  if(t!=="set")lastMain=t;
+  $("setBtn").textContent=t==="set"?"完成":"⚙ 设置";
   Array.prototype.forEach.call($("nav").querySelectorAll("button"),function(b){b.setAttribute("aria-selected",b.getAttribute("data-t")===t)});
-  if(t==="think")calc();if(t==="sum")sumView();if(t==="log")listView();if(t==="save")saveView();if(t==="debt")debtView();
+  if(t==="think")calc();if(t==="sum")sumView();if(t==="log")listView();if(t==="save")saveView();if(t==="debt")debtView();if(t==="set")settingsView();
   window.scrollTo(0,0);
 }
 $("nav").addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("button[data-t]");if(b)tab(b.getAttribute("data-t"))});
@@ -1283,7 +1302,7 @@ function freeRow(k,v,cls){return '<div class="fr'+(cls?" "+cls:"")+'"><span clas
 function freeView(){
   var m=$("sm").value||today().slice(0,7),f=freeMoney(m);
   $("freeTitle").textContent=m+" 能自由使用的钱";
-  if(!(f.wage>0)){$("freeBody").innerHTML='<div class="empty" style="padding:8px 0">先在下面的「设置」填每月净薪水，才能算出能自由使用的钱</div>';return}
+  if(!(f.wage>0)){$("freeBody").innerHTML='<div class="empty" style="padding:8px 0">先到「设置」填每月净薪水，才能算出能自由使用的钱 <button class="btn ghost small" data-go="set" data-jump="payCard" style="margin-top:8px">去设置</button></div>';return}
   var h=freeRow("每月净薪水（扣固定扣除后）"+(f.payFrom?"（"+f.payFrom+" 起）":""),rm0(f.inc));
   if(f.rec>0)h+=freeRow("− 固定支出（自动记账）",rm0(f.rec));
   if(f.pendRec>0)h+=freeRow("− 固定支出（还没到日子）",rm0(f.pendRec));
@@ -1336,7 +1355,7 @@ function homeInsights(){
       if(todayFree>allowance)out.push({lv:3,t:"今天已花 "+rm0(todayFree)+"，超过今日额度 "+rm0(allowance)});
       else out.push({lv:1,t:"今天已花 "+rm0(todayFree)+"，今日额度约 "+rm0(allowance)+"，还可以花 <b>"+rm0(allowance-todayFree)+"</b>"});
     }
-  }else if(!hasWage)out.push({lv:2,t:"到「总览」填每月净薪水，就能看到本月可用余额和花钱速度"});
+  }else if(!hasWage)out.push({lv:2,t:"到「设置」填每月净薪水，就能看到本月可用余额和花钱速度"});
   var ws=mondayOf(t),upto=((s2d(t).getDay()+6)%7)+1,wk=weekData(ws,upto),pw=weekData(addDays(ws,-7),upto),dd=wk.tot-pw.tot;
   if(wk.tot>0&&pw.tot>0&&Math.abs(dd)>=0.005)out.push({lv:1,t:"本周至今花了 "+rm0(wk.tot)+"，比上周同期"+(dd>0?"多 ":"少 ")+"<b>"+rm0(Math.abs(dd))+"</b>"});
   var avd=monthData(m).av;if(avd>0)out.push({lv:2,t:"本月「不必要」已花 "+rm0(avd)});
@@ -1359,6 +1378,21 @@ function homeView(){
   var ins=homeInsights();
   $("homeIns").innerHTML=ins.map(function(o){return '<li>'+(o.lv>=4?"🔴 ":o.lv===3?"🟠 ":o.lv===2?"💡 ":"✨ ")+o.t+'</li>'}).join("");
 }
+
+/* ---- settings page ---- */
+function settingsView(){
+  fillSettings();recurView();mustChipsView();lockView();syncUI();
+}
+function jumpTo(id){var el=$(id);if(el&&el.scrollIntoView)el.scrollIntoView({block:"start",behavior:"smooth"})}
+$("setBtn").addEventListener("click",function(){tab(cur==="set"?lastMain:"set")});
+document.addEventListener("click",function(e){
+  var g=e.target.closest&&e.target.closest("[data-go]");
+  if(g){tab(g.getAttribute("data-go"));var j=g.getAttribute("data-jump");if(j)setTimeout(function(){jumpTo(j)},50);return}
+  var j2=e.target.closest&&e.target.closest("#setNav [data-jump]");if(j2)jumpTo(j2.getAttribute("data-jump"));
+});
+function openSync(){tab("set");setTimeout(function(){jumpTo("syncCard")},50)}
+$("syncBar").addEventListener("click",function(){if(!C.url||!C.token||lastErr)openSync()});
+$("syncBar").addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();$("syncBar").click()}});
 
 /* ---- think ---- */
 var RATES=[3,5,7];
@@ -1422,7 +1456,7 @@ function sumView(){
   if(av>0){var o=fv(av,"month",S.set.rate,10);b.hidden=false;
     b.innerHTML='这个月「不必要」花了 <b>'+rm0(av)+'</b>。如果每个月都省下这个数，存 10 年（'+S.set.rate+'%）≈ <b>'+rm0(o.fv)+'</b>，现值约 '+rm0(pv(o.fv,10))+'。'}
   else b.hidden=true;
-  cmpView(m);recurView();weekView();freeView();mustChipsView();yearView();
+  cmpView(m);weekView();freeView();yearView();
   $("budTitle2").textContent=m+" 预算";renderBudget($("budList2"),$("budCard2"),budgetRows(m));
 }
 function prevMonth(m,k){var y=+m.slice(0,4),n=+m.slice(5,7)-(k===undefined?1:k);while(n<1){n+=12;y--}return y+"-"+String(n).padStart(2,"0")}
