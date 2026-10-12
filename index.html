@@ -354,6 +354,20 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
       <div class="row" style="margin-top:14px"><button class="btn grow" id="dadd">添加</button><button class="btn ghost grow" id="dcancel" hidden>取消修改</button></div>
       <div class="msg" id="dmsg"></div>
     </div>
+    <div id="acctList"></div>
+    <div class="card" id="acctFormCard">
+      <details class="more" id="acctNew"><summary id="acctNewSum">＋ 新增信用账户（ShopeePay PayLater、信用卡…）</summary>
+        <div class="grid" style="margin-top:10px">
+          <div class="full"><label for="an">账户名称</label><input id="an" type="text" maxlength="40" placeholder="例如：ShopeePay PayLater"></div>
+          <div><label for="ad">每月几号到期</label><input id="ad" type="number" inputmode="numeric" min="1" max="31" value="5"></div>
+          <div><label for="al">额度 (RM，可不填)</label><input id="al" type="number" inputmode="decimal" min="0" step="1" placeholder="例如 5000"></div>
+          <div class="full"><label class="chk"><input type="checkbox" id="asp">还款算进支出</label></div>
+        </div>
+        <div class="row" style="margin-top:12px"><button class="btn grow" id="aadd">添加账户</button><button class="btn ghost grow" id="acancel" hidden>取消修改</button></div>
+        <div class="msg" id="amsg"></div>
+        <p class="msg">信用账户把每个月的账单收在一起：总共欠多少、下一笔什么时候到期、额度还剩多少、未来 6 个月每月要还多少。「还款算进支出」建议保持关闭：如果你买东西当天就记在每日项目里，付账单时再算一次就重复了。</p>
+      </details>
+    </div>
     <div id="dlist"></div>
     <div class="card"><p class="msg" style="margin:0">「还款算进支出」：我欠的钱，每次还款会计入当月支出（影响预算和 Money Left）。如果这笔欠款当初的消费已经记过账（比如信用卡刷的），请关掉，避免重复。别人还我的钱不算支出。到期前 7 天和逾期会在「记账」页提醒。</p></div>
   </section>
@@ -530,7 +544,7 @@ var SKIP="Skipped";  /* "忍住没买" records live in Expenses with this catego
 function spent(){
   var by=debts().by,out=[];
   S.expenses.forEach(function(x){
-    if(x.cat===SKIP||x.cat.indexOf("Debt:")===0||x.cat.indexOf("Recur:")===0||x.cat.indexOf("Goal:")===0||x.cat.indexOf("Must:")===0||x.cat.indexOf("Pay:")===0)return;
+    if(x.cat===SKIP||x.cat.indexOf("Debt:")===0||x.cat.indexOf("Recur:")===0||x.cat.indexOf("Goal:")===0||x.cat.indexOf("Must:")===0||x.cat.indexOf("Pay:")===0||x.cat.indexOf("Acct:")===0)return;
     if(x.cat.indexOf("DebtPay:")===0){var pr=payRef(x.cat),d=pr&&by[pr.id];if(d&&d.dir==="owe"&&d.spend)out.push({id:x.id,date:x.date,item:"还款："+d.name,cat:"还款",amt:x.amt,ro:true});return}
     out.push(x);
   });
@@ -910,7 +924,7 @@ $("slist").addEventListener("click",function(e){
            item = name, amt = principal in CUR (RM when CUR is omitted), date = start
    payment cat "DebtPay:<debtId>[:<rate>]", item = note, date = payment date,
            amt = what you paid in RM; for a foreign debt rate = CUR per 1 RM and the debt shrinks by amt * rate */
-var DEBT_RE=/^Debt:(owe|lent):([01]):(\d{4}-\d{2}-\d{2}|-)(?::([A-Z]{3})(?::(\d+(?:\.\d+)?))?)?$/;
+var DEBT_RE=/^Debt:(owe|lent):([01]):(\d{4}-\d{2}-\d{2}|-)(?::([A-Z]{3})(?::(\d+(?:\.\d+)?))?)?(?:@(\d+))?$/;
 var PAY_RE=/^DebtPay:(\d+)(?::(\d+(?:\.\d+)?))?$/;
 var CURS=["MYR","NTD","SGD","USD"];
 var openDebts={};
@@ -920,7 +934,7 @@ function cm(cur,n){return cur==="MYR"?rm(n):cur+" "+Number(n).toLocaleString("en
 function daysUntil(due){return Math.round((new Date(due+"T00:00:00")-new Date(today()+"T00:00:00"))/864e5)}
 function debts(){
   var list=[],by={};
-  S.expenses.forEach(function(x){var m=DEBT_RE.exec(x.cat);if(m){var d={id:x.id,name:x.item,dir:m[1],spend:m[2]==="1",due:m[3]==="-"?"":m[3],cur:m[4]||"MYR",refRate:m[5]?+m[5]:0,start:x.date,principal:x.amt,pays:[],paid:0};list.push(d);by[String(x.id)]=d}});
+  S.expenses.forEach(function(x){var m=DEBT_RE.exec(x.cat);if(m){var d={id:x.id,name:x.item,dir:m[1],spend:m[2]==="1",due:m[3]==="-"?"":m[3],cur:m[4]||"MYR",refRate:m[5]?+m[5]:0,acct:m[6]||"",start:x.date,principal:x.amt,pays:[],paid:0};list.push(d);by[String(x.id)]=d}});
   S.expenses.forEach(function(x){if(x.cat.indexOf("DebtPay:")===0){var pr=payRef(x.cat),d=pr&&by[pr.id];if(d){
     var native=d.cur==="MYR"?x.amt:r2(x.amt*pr.rate);
     d.pays.push({id:x.id,date:x.date,item:x.item,rm:x.amt,rate:pr.rate,native:native});d.paid+=native}}});
@@ -974,16 +988,25 @@ function debtSection(title,list){
 }
 function debtView(){
   var ae=document.activeElement;
-  if(ae&&ae.tagName==="INPUT"&&$("dlist").contains(ae))return;   /* never wipe what is being typed */
-  var all=debts(),owe=all.filter(function(d){return d.dir==="owe"}),lent=all.filter(function(d){return d.dir==="lent"});
+  if(ae&&(ae.tagName==="INPUT"||ae.tagName==="SELECT")&&($("dlist").contains(ae)||$("acctList").contains(ae)))return;   /* never wipe what is being typed */
+  var all=debts(),owe=all.filter(function(d){return d.dir==="owe"&&!d.acct}),lent=all.filter(function(d){return d.dir==="lent"});
   var tile=function(l){
     var rmSum=0,fx={};
     l.forEach(function(d){if(d.settled)return;if(d.cur==="MYR")rmSum+=d.left;else fx[d.cur]=(fx[d.cur]||0)+d.left});
     return rm0(rmSum)+Object.keys(fx).map(function(c){return '<small style="display:block;color:var(--muted)">+ '+cm(c,fx[c])+'</small>'}).join("");
   };
   var over=all.filter(function(d){return !d.settled&&d.days!==null&&d.days<0}).length;
+  owe=all.filter(function(d){return d.dir==="owe"});                  /* the totals also include statements that live in a credit account */
   $("dstat").innerHTML='<div><small>我欠（剩余）</small><strong class="warnv">'+tile(owe)+'</strong></div><div><small>欠我（剩余）</small><strong>'+tile(lent)+'</strong></div><div><small>逾期</small><strong class="'+(over?"warnv":"")+'">'+over+' 笔</strong></div>';
-  $("dlist").innerHTML=debtSection("我欠别人的",owe)+debtSection("别人欠我的",lent);
+  $("dlist").innerHTML=debtSection("我欠别人的",all.filter(function(d){return d.dir==="owe"&&!d.acct}))+debtSection("别人欠我的",lent);
+  acctView();
+}
+function recordPay(d,a,dt,rate){
+  var fx=d.cur!=="MYR",native=fx?r2(a*rate):a,note="";
+  if(native>d.left+0.004){native=d.left;a=fx?r2(native/rate):d.left;note="（超过剩余，已按剩余记录：RM "+a.toFixed(2)+"）"}
+  var rec={id:Date.now(),date:dt,item:d.dir==="owe"?"还款":"收款",cat:"DebtPay:"+d.id+(fx?":"+rate:""),amt:r2(a)};
+  S.expenses.push(rec);queue({op:"add",row:rec});
+  return {rec:rec,note:note};
 }
 function debtDel(ids){S.expenses=S.expenses.filter(function(x){return ids.indexOf(String(x.id))<0});ids.forEach(function(id){S.pending.push({op:"del",id:+id})});queue()}
 $("dlist").addEventListener("toggle",function(e){var id=e.target.getAttribute&&e.target.getAttribute("data-did");if(id)openDebts[id]=e.target.open},true);
@@ -1003,10 +1026,8 @@ $("dlist").addEventListener("click",function(e){
     var rate=fx?parseFloat(det.querySelector("[data-prate]").value):0;
     if(!(a>0)){msg.textContent="请填金额";return}
     if(fx&&!(rate>0)){msg.textContent="请填汇率（1 RM = 多少 "+d.cur+"）";return}
-    var native=fx?r2(a*rate):a,note="";
-    if(native>d.left+0.004){native=d.left;a=fx?r2(native/rate):d.left;note="（超过剩余，已按剩余记录：RM "+a.toFixed(2)+"）"}
-    var rec={id:Date.now(),date:dt,item:d.dir==="owe"?"还款":"收款",cat:"DebtPay:"+pay+(fx?":"+rate:""),amt:r2(a)};
-    S.expenses.push(rec);queue({op:"add",row:rec});syncUI();debtView();
+    var pr=recordPay(d,a,dt,rate),rec=pr.rec,note=pr.note;
+    syncUI();debtView();
     var m2=document.querySelector('[data-did="'+pay+'"] [data-pmsg]');if(m2)m2.textContent="已记录 ✓"+note;
     toast(d.dir==="owe"?"还款已记录":"收款已记录",rm(rec.amt)+(debts().by[pay]&&debts().by[pay].settled?" · 已结清 🎉":""));
   }else if(pdel){S.expenses=S.expenses.filter(function(x){return String(x.id)!==pdel});queue({op:"del",id:+pdel});syncUI();debtView()}
@@ -1396,6 +1417,137 @@ document.addEventListener("click",function(e){
 function openSync(){tab("set");setTimeout(function(){jumpTo("syncCard")},50)}
 $("syncBar").addEventListener("click",function(){if(!C.url||!C.token||lastErr)openSync()});
 $("syncBar").addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();$("syncBar").click()}});
+
+/* ---- credit accounts (信用账户): the monthly statements of e.g. ShopeePay PayLater ----
+   account row  cat "Acct:<due day>:<1|0 repayments count as spending>", item = name, amt = credit limit (0 = none)
+   statement    an ordinary debt whose category ends in "@<accountId>"; its month is the month before its due date */
+var ACCT_RE=/^Acct:(\d{1,2}):([01])$/;
+function accounts(){
+  var out=[];S.expenses.forEach(function(x){var m=ACCT_RE.exec(x.cat);if(m)out.push({id:x.id,name:x.item,dueDay:+m[1],spend:m[2]==="1",limit:x.amt,created:x.date})});
+  return out.sort(function(a,b){return a.id-b.id});
+}
+function acctCat(dueDay,spend){return "Acct:"+dueDay+":"+(spend?1:0)}
+function stmtDue(m,dueDay){var nm=idxToYm(monthIdx(m)+1);return nm+"-"+p2(Math.min(dueDay,daysInMonth(nm)))}
+function stmtMonth(d){return d.due?idxToYm(monthIdx(d.due.slice(0,7))-1):d.start.slice(0,7)}
+function debtCatOf(d,over){
+  var o=Object.assign({spend:d.spend,due:d.due,acct:d.acct},over||{});
+  return "Debt:"+d.dir+":"+(o.spend?1:0)+":"+(o.due||"-")+(d.cur!=="MYR"?":"+d.cur+(d.refRate>0?":"+d.refRate:""):"")+(o.acct?"@"+o.acct:"");
+}
+function putRow(rec){S.expenses=S.expenses.filter(function(x){return x.id!==rec.id});S.expenses.push(rec);queue({op:"add",row:rec})}
+function acctStats(a){
+  var all=debts().filter(function(d){return d.acct===String(a.id)}),open=all.filter(function(d){return !d.settled}),m=today().slice(0,7);
+  open.sort(function(x,y){return (x.due||"9999")<(y.due||"9999")?-1:1});
+  var out=open.reduce(function(t,d){return t+d.left},0),months={};
+  for(var i=0;i<6;i++)months[idxToYm(monthIdx(m)+i)]=0;
+  open.forEach(function(d){var dm=d.due?d.due.slice(0,7):m;if(dm<m)dm=m;if(months[dm]!==undefined)months[dm]+=d.left});
+  return {all:all,open:open,done:all.filter(function(d){return d.settled}),out:out,next:open[0]||null,overdue:open.filter(function(d){return d.days!==null&&d.days<0}),months:months};
+}
+function stmtRow(a,d){
+  var st=debtStatus(d);
+  return '<div class="rrow"><b>'+stmtMonth(d)+' 账单</b><div class="amt">'+(d.settled?rm0(d.principal):rm(d.left))+'</div>'+
+    '<div class="info"><span class="st '+st.c+'">'+st.t+'</span>'+(d.paid>0?" · 已还 "+rm0(d.paid):"")+'</div>'+
+    '<div class="acts"><button class="x" data-aedit="'+d.id+'" aria-label="修改账单">'+ICON_EDIT+'</button><button class="x" data-adel="'+d.id+'" aria-label="删除账单">×</button></div></div>'+
+    (d.settled?'':'<details class="more" style="margin:-4px 0 8px"><summary>记还款</summary><div class="grid" style="margin-top:8px"><div><label>金额 (RM)</label><input type="number" inputmode="decimal" step="0.01" min="0" data-apamt value="'+d.left+'"></div><div><label>日期</label><input type="date" data-apdate value="'+today()+'"></div></div><button class="btn small" data-apay="'+d.id+'" style="margin-top:8px">记一笔还款</button><div class="msg" data-apmsg></div></details>');
+}
+function acctCard(a){
+  var st=acctStats(a),m=today().slice(0,7),prevM=idxToYm(monthIdx(m)-1);
+  var nextTxt=st.next?(st.next.days!==null&&st.next.days<0?'<span class="st over">已逾期 '+(-st.next.days)+' 天</span>':"")+" 下一笔："+(st.next.due?st.next.due.slice(5):"—")+" 到期 · "+rm(st.next.left)+(st.next.days!==null&&st.next.days>=0?"（"+st.next.days+" 天后）":""):"没有未付的账单 ✓";
+  var lim=a.limit>0?'<div class="msg" style="margin:6px 0 0">额度 '+rm0(a.limit)+' · 已用 '+rm0(st.out)+' · 可用 <b>'+rm0(Math.max(0,a.limit-st.out))+'</b></div><div class="bar"><i class="'+budState(st.out/a.limit*100)+'" style="width:'+Math.min(100,st.out/a.limit*100)+'%"></i></div>':"";
+  var mx=Math.max.apply(null,Object.keys(st.months).map(function(k){return st.months[k]}).concat([1]));
+  var plan=st.open.length?'<h3 style="margin:14px 0 4px;font-size:13px;color:var(--muted);font-weight:600">未来 6 个月要还</h3>'+Object.keys(st.months).map(function(k){return '<div class="tr"><span class="mo">'+k.slice(2)+'</span><div class="bar"><i style="width:'+(st.months[k]>0?Math.max(2,st.months[k]/mx*100):0)+'%"></i></div><span class="amt">'+rm0(st.months[k])+'</span></div>'}).join(""):"";
+  var missing=!st.all.some(function(d){return stmtMonth(d)===prevM})?'<div class="hint" style="margin-top:10px">上个月（'+prevM+'）的账单还没记。出账后到下面「新增账单」记一笔。</div>':"";
+  var cand=debts().filter(function(d){return d.dir==="owe"&&d.cur==="MYR"&&!d.acct&&!d.settled});
+  var attach=cand.length?'<details class="more" style="margin-top:8px"><summary>归入已有欠款（'+cand.length+'）</summary><div style="margin-top:8px">'+cand.map(function(d){
+      var pre=d.name.toLowerCase().indexOf(a.name.toLowerCase().split(" ")[0])>=0;
+      return '<label class="chk" style="margin:6px 0"><input type="checkbox" data-attach="'+d.id+'"'+(pre?" checked":"")+'>'+esc(d.name)+' · '+rm0(d.left)+(d.due?'（'+d.due.slice(5)+' 到期）':'')+'</label>'}).join("")+
+    '<label class="chk" style="margin:8px 0"><input type="checkbox" data-attachspend checked>统一按这个账户的设置：还款'+(a.spend?"":"不")+'算进支出</label><button class="btn small" data-aattach="'+a.id+'">归入这个账户</button><div class="msg" data-aamsg></div></div></details>':"";
+  var open=st.open.map(function(d){return stmtRow(a,d)}).join(""),done=st.done.map(function(d){return stmtRow(a,d)}).join("");
+  return '<div class="card acct" data-acct="'+a.id+'"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><h2 style="margin:0 0 4px">'+esc(a.name)+'</h2><div class="msg" style="margin:0">每月 '+a.dueDay+' 号到期 · 还款'+(a.spend?"":"不")+'算支出</div></div><div style="text-align:right"><div class="fbig '+(st.overdue.length?"over":st.out>0?"near":"ok")+'" style="font-size:26px">'+rm0(st.out)+'</div><div class="msg" style="margin:0">总共欠</div></div></div>'+
+    '<div class="msg" style="margin-top:8px">'+nextTxt+'</div>'+lim+plan+missing+
+    '<h3 style="margin:14px 0 2px;font-size:13px;color:var(--muted);font-weight:600">账单</h3>'+(open||'<div class="empty" style="padding:8px 0">还没有账单</div>')+
+    (done?'<details class="more"><summary>已结清（'+st.done.length+'）</summary>'+done+'</details>':'')+
+    '<details class="more stmtForm" style="margin-top:8px"><summary data-stmtsum>＋ 新增账单</summary><div class="grid" style="margin-top:8px"><div><label>账单月份（格式 2026-11）</label><input type="month" placeholder="2026-11" data-sm value="'+(function(){var mx=st.all.map(stmtMonth).sort().pop();return mx?idxToYm(monthIdx(mx)+1):prevM})()+'"></div><div><label>账单金额 (RM)</label><input type="number" inputmode="decimal" step="0.01" min="0" data-sa placeholder="0.00"></div><div class="full"><label>到期日（默认下个月 '+a.dueDay+' 号，可改）</label><input type="date" data-sd></div></div><div class="row" style="margin-top:10px"><button class="btn small" data-asave="'+a.id+'">添加账单</button><button class="btn ghost small" data-acancelst hidden>取消修改</button></div><div class="msg" data-asmsg></div></details>'+
+    attach+
+    '<div class="row" style="margin-top:12px"><button class="btn ghost small" data-aaedit="'+a.id+'">修改账户</button><button class="btn ghost small" data-aadel="'+a.id+'">删除账户</button></div></div>';
+}
+function acctView(){
+  var as=accounts();
+  $("acctList").innerHTML=as.map(acctCard).join("");
+}
+var acctEditId=null;
+function acctFormReset(){
+  acctEditId=null;$("an").value="";$("ad").value=5;$("al").value="";$("asp").checked=false;
+  $("aadd").textContent="添加账户";$("acancel").hidden=true;$("acctNewSum").textContent="＋ 新增信用账户（ShopeePay PayLater、信用卡…）";
+}
+$("acancel").addEventListener("click",function(){acctFormReset();$("amsg").textContent=""});
+$("aadd").addEventListener("click",function(){
+  var name=$("an").value.trim(),d=parseInt($("ad").value,10),lim=parseFloat($("al").value)||0,sp=$("asp").checked;
+  if(!name){$("amsg").textContent="请填账户名称";return}
+  if(!(d>=1&&d<=31)){$("amsg").textContent="每月几号请填 1 到 31";return}
+  var editing=acctEditId!==null,old=editing?accounts().filter(function(x){return String(x.id)===acctEditId})[0]:null;
+  if(editing&&!old){acctFormReset();$("amsg").textContent="这个账户已经不存在了";return}
+  var rec={id:editing?old.id:Date.now(),date:editing?old.created:today(),item:name,cat:acctCat(d,sp),amt:r2(Math.max(0,lim))};
+  putRow(rec);
+  if(editing&&old.spend!==sp)debts().filter(function(x){return x.acct===String(old.id)}).forEach(function(x){putRow({id:x.id,date:x.start,item:x.name,cat:debtCatOf(x,{spend:sp}),amt:x.principal})});
+  syncUI();acctFormReset();$("amsg").textContent="";$("acctNew").open=false;debtView();
+  toast(editing?"账户已修改":"账户已添加",name);
+});
+function acctFromEl(el){var c=el.closest(".acct");return c?accounts().filter(function(a){return String(a.id)===c.getAttribute("data-acct")})[0]:null}
+$("acctList").addEventListener("click",function(e){
+  var b=e.target.closest&&e.target.closest("button");if(!b)return;
+  var a=acctFromEl(b);if(!a)return;
+  var card=b.closest(".acct"),g=function(k){return b.getAttribute(k)};
+  if(g("data-aaedit")!==null){
+    acctEditId=String(a.id);$("an").value=a.name;$("ad").value=a.dueDay;$("al").value=a.limit||"";$("asp").checked=a.spend;
+    $("aadd").textContent="保存修改";$("acancel").hidden=false;$("acctNewSum").textContent="修改信用账户";$("acctNew").open=true;
+    $("acctFormCard").scrollIntoView&&$("acctFormCard").scrollIntoView({block:"center",behavior:"smooth"});return;
+  }
+  if(g("data-aadel")!==null){
+    if(b.getAttribute("data-sure")!=="1"){b.setAttribute("data-sure","1");b.textContent="再按一次确认（账单会保留成普通欠款）";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-sure");b.textContent="删除账户"}},3500);return}
+    debts().filter(function(x){return x.acct===String(a.id)}).forEach(function(x){putRow({id:x.id,date:x.start,item:x.name,cat:debtCatOf(x,{acct:""}),amt:x.principal})});
+    S.expenses=S.expenses.filter(function(x){return x.id!==a.id});queue({op:"del",id:a.id});
+    if(acctEditId===String(a.id))acctFormReset();
+    syncUI();debtView();toast("账户已删除","账单保留在「我欠别人的」里");return;
+  }
+  if(g("data-asave")!==null){
+    var f=card.querySelector(".stmtForm"),msg=f.querySelector("[data-asmsg]"),mon=f.querySelector("[data-sm]").value,amt=parseFloat(f.querySelector("[data-sa]").value),due=f.querySelector("[data-sd]").value||"";
+    if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(mon)){msg.textContent="账单月份格式请填 年-月，例如 2026-11";return}
+    if(!(amt>0)){msg.textContent="请填账单金额";return}
+    var editing=f.getAttribute("data-editing"),st=acctStats(a);
+    if(st.all.some(function(d){return stmtMonth(d)===mon&&String(d.id)!==editing})){msg.textContent=mon+" 的账单已经有了，请在下面修改它";return}
+    due=due||stmtDue(mon,a.dueDay);
+    var old=editing?debts().by[editing]:null,rec;
+    if(editing&&!old){msg.textContent="这笔账单已经不存在了";f.removeAttribute("data-editing");return}
+    rec={id:editing?old.id:Date.now(),date:editing?old.start:today(),item:editing?old.name:a.name+" "+mon+" 账单",cat:"Debt:owe:"+(editing?(old.spend?1:0):(a.spend?1:0))+":"+due+"@"+a.id,amt:r2(amt)};
+    putRow(rec);syncUI();debtView();toast(editing?"账单已修改":"账单已添加",mon+" · "+rm(rec.amt));return;
+  }
+  if(g("data-acancelst")!==null){debtView();return}
+  if(g("data-aedit")!==null){
+    var d=debts().by[g("data-aedit")];if(!d)return;
+    var f2=card.querySelector(".stmtForm");f2.open=true;f2.setAttribute("data-editing",d.id);
+    f2.querySelector("[data-sm]").value=stmtMonth(d);f2.querySelector("[data-sa]").value=d.principal;f2.querySelector("[data-sd]").value=d.due||"";
+    f2.querySelector("[data-stmtsum]").textContent="修改账单";f2.querySelector("[data-asave]").textContent="保存修改";f2.querySelector("[data-acancelst]").hidden=false;
+    f2.scrollIntoView&&f2.scrollIntoView({block:"center",behavior:"smooth"});return;
+  }
+  if(g("data-adel")!==null){
+    if(b.getAttribute("data-sure")!=="1"){b.setAttribute("data-sure","1");b.textContent="确认";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-sure");b.innerHTML="×"}},3000);return}
+    var id=g("data-adel"),ids=[id].concat(S.expenses.filter(function(x){var pr=payRef(x.cat);return pr&&pr.id===id}).map(function(x){return String(x.id)}));
+    debtDel(ids);syncUI();debtView();return;
+  }
+  if(g("data-apay")!==null){
+    var det=b.closest("details"),d3=debts().by[g("data-apay")],m3=det.querySelector("[data-apmsg]");if(!d3)return;
+    var v=parseFloat(det.querySelector("[data-apamt]").value),dt=det.querySelector("[data-apdate]").value||today();
+    if(!(v>0)){m3.textContent="请填金额";return}
+    var pr=recordPay(d3,v,dt,0);syncUI();debtView();
+    toast("还款已记录",rm(pr.rec.amt)+(debts().by[d3.id]&&debts().by[d3.id].settled?" · 这期已结清 🎉":""));return;
+  }
+  if(g("data-aattach")!==null){
+    var box=b.parentNode,picked=Array.prototype.slice.call(box.querySelectorAll("[data-attach]:checked")).map(function(c){return c.getAttribute("data-attach")}),uni=box.querySelector("[data-attachspend]").checked,mm=box.querySelector("[data-aamsg]");
+    if(!picked.length){mm.textContent="请先勾选要归入的欠款";return}
+    picked.forEach(function(did){var d=debts().by[did];if(d)putRow({id:d.id,date:d.start,item:d.name,cat:debtCatOf(d,{acct:String(a.id),spend:uni?a.spend:d.spend}),amt:d.principal})});
+    syncUI();debtView();toast("已归入 "+picked.length+" 笔",a.name);
+  }
+});
 
 /* ---- think ---- */
 var RATES=[3,5,7];
