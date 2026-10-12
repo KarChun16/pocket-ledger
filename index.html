@@ -189,6 +189,11 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
 .note{display:flex;flex-direction:column;gap:10px;background:var(--surface);border-radius:var(--radius);padding:12px 14px;margin-bottom:12px;font-size:15px}
 .note .notebtns{display:flex;gap:8px}
 .note .cmp{padding:5px 0}
+.rowlist{background:var(--surface);border-radius:var(--radius);margin-bottom:16px;overflow:hidden}
+.rowbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:54px;padding:12px 16px;border:0;background:transparent;color:var(--ink);font:inherit;font-size:17px;text-align:left;cursor:pointer;border-top:.5px solid var(--line)}
+.rowbtn:first-child{border-top:0}.rowbtn:active{background:var(--surface2)}.rowbtn[hidden]{display:none}
+.rbt{flex:none}.rbsub{flex:1;min-width:0;text-align:right;color:var(--muted);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rbc{flex:none;color:var(--muted);font-size:22px;line-height:1}
+.shbody>.card{background:transparent;padding:0;margin-bottom:8px}.shbody>.card>h2:first-child{display:none}
 .sheet{position:fixed;inset:0;z-index:50;display:none}
 .sheet.on{display:block}
 #sheetHist{z-index:51}#sheetEntry{z-index:52}
@@ -291,8 +296,9 @@ body.sheet-open{overflow:hidden}
       </div>
     </div>
     <div class="card" id="res"></div>
-    <div class="card"><h2>增长曲线</h2><div id="chart"></div><p class="msg">虚线 = 你实际投入的本金。三条线 = 3% / 5% / 7%。</p></div>
-    <div class="card"><p class="msg" style="margin:0">假设：按月复利，每月月底存入；通膨默认 3%（在「设置」可改）。这是简单估算，不是投资建议，实际回报会波动，也可能亏损。</p></div>
+    <div class="rowlist"><button class="rowbtn" data-pop="chartCard"><span class="rbt">增长曲线</span><span class="rbsub" data-sub="chart"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="thinkNote"><span class="rbt">假设说明</span><span class="rbsub" data-sub=""></span><span class="rbc" aria-hidden="true">›</span></button></div>
+    <div class="card" id="chartCard"><h2>增长曲线</h2><div id="chart"></div><p class="msg">虚线 = 你实际投入的本金。三条线 = 3% / 5% / 7%。</p></div>
+    <div class="card" id="thinkNote"><p class="msg" style="margin:0">假设：按月复利，每月月底存入；通膨默认 3%（在「设置」可改）。这是简单估算，不是投资建议，实际回报会波动，也可能亏损。</p></div>
   </section>
 
   <section id="p-save" hidden>
@@ -303,6 +309,7 @@ body.sheet-open{overflow:hidden}
       <div class="stat" id="sstat"></div>
       <div id="sNote" class="hint good" hidden></div>
     </div>
+    <div class="rowlist"><button class="rowbtn" data-pop="goalCard"><span class="rbt">忍住的目标</span><span class="rbsub" data-sub="goal"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="slistCard"><span class="rbt">记录</span><span class="rbsub" data-sub="slist"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="saveHelp"><span class="rbt">怎么用</span><span class="rbsub" data-sub=""></span><span class="rbc" aria-hidden="true">›</span></button></div>
     <div class="card" id="goalCard">
       <h2 id="gtitle">忍住的目标</h2>
       <div id="goalList"></div>
@@ -314,11 +321,11 @@ body.sheet-open{overflow:hidden}
       <div class="msg" id="gmsg"></div>
       <p class="msg">进度 = 你累计忍住没花的钱。有多个目标时按添加的先后顺序依次填满：第一个满了，多出来的才算到第二个。估算时间按近 3 个月平均每月忍住多少来算。目标不会算进支出。</p>
     </div>
-    <div class="card">
+    <div class="card" id="slistCard">
       <h2>记录</h2>
       <div id="slist"></div>
     </div>
-    <div class="card"><p class="msg" style="margin:0">怎么用：想买烟、饮料之类但忍住了，到「记账」填金额和项目，点「我忍住了」。这些不会算进支出。「存起来现在值多少」按你设定的回报率（默认 5%）从那天算到今天，是假设估算，不是投资建议。</p></div>
+    <div class="card" id="saveHelp"><p class="msg" style="margin:0">怎么用：想买烟、饮料之类但忍住了，到「记账」填金额和项目，点「我忍住了」。这些不会算进支出。「存起来现在值多少」按你设定的回报率（默认 5%）从那天算到今天，是假设估算，不是投资建议。</p></div>
   </section>
 
   <section id="p-debt" hidden>
@@ -326,7 +333,8 @@ body.sheet-open{overflow:hidden}
       <h2>欠款总览</h2>
       <div class="stat" id="dstat"></div>
     </div>
-    <div class="card">
+    <div class="rowlist"><button class="rowbtn" data-pop="dformCard"><span class="rbt">＋ 新增欠款</span><span class="rbsub" data-sub=""></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="acctPop"><span class="rbt">信用账户</span><span class="rbsub" data-sub="acct"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="dlistPop"><span class="rbt">欠款清单</span><span class="rbsub" data-sub="dlist"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="debtHelp"><span class="rbt">说明</span><span class="rbsub" data-sub=""></span><span class="rbc" aria-hidden="true">›</span></button></div>
+    <div class="card" id="dformCard">
       <h2 id="dtitle">新增欠款</h2>
       <div class="grid">
         <div><label for="dd">类型</label><select id="dd"><option value="owe">我欠别人</option><option value="lent">别人欠我</option></select></div>
@@ -341,7 +349,7 @@ body.sheet-open{overflow:hidden}
       <div class="row" style="margin-top:14px"><button class="btn grow" id="dadd">添加</button><button class="btn ghost grow" id="dcancel" hidden>取消修改</button></div>
       <div class="msg" id="dmsg"></div>
     </div>
-    <div id="acctList"></div>
+    <div id="acctPop"><div id="acctList"></div>
     <div class="card" id="acctFormCard">
       <details class="more" id="acctNew"><summary id="acctNewSum">＋ 新增信用账户（ShopeePay PayLater、信用卡…）</summary>
         <div class="grid" style="margin-top:10px">
@@ -354,9 +362,9 @@ body.sheet-open{overflow:hidden}
         <div class="msg" id="amsg"></div>
         <p class="msg">信用账户把每个月的账单收在一起：总共欠多少、下一笔什么时候到期、额度还剩多少、未来 6 个月每月要还多少。「还款算进支出」建议保持关闭：如果你买东西当天就记在每日项目里，付账单时再算一次就重复了。</p>
       </details>
-    </div>
-    <div id="dlist"></div>
-    <div class="card"><p class="msg" style="margin:0">「还款算进支出」：我欠的钱，每次还款会计入当月支出（影响预算和 Money Left）。如果这笔欠款当初的消费已经记过账（比如信用卡刷的），请关掉，避免重复。别人还我的钱不算支出。到期前 7 天和逾期会在「记账」页提醒。</p></div>
+    </div></div>
+    <div id="dlistPop"><div id="dlist"></div></div>
+    <div class="card" id="debtHelp"><p class="msg" style="margin:0">「还款算进支出」：我欠的钱，每次还款会计入当月支出（影响预算和 Money Left）。如果这笔欠款当初的消费已经记过账（比如信用卡刷的），请关掉，避免重复。别人还我的钱不算支出。到期前 7 天和逾期会在「记账」页提醒。</p></div>
   </section>
 
   <section id="p-sum" hidden>
@@ -373,9 +381,10 @@ body.sheet-open{overflow:hidden}
         <select id="sm" style="width:auto;min-height:36px;padding:6px 12px"></select>
       </div>
       <div class="stat" id="stat"></div>
-      <div id="cats" style="margin-top:8px"></div>
-      <div id="avBox" class="hint" hidden></div>
     </div>
+    <div class="rowlist"><button class="rowbtn" data-pop="catsPop"><span class="rbt">分类明细</span><span class="rbsub" data-sub="cats"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="weekCard"><span class="rbt">每周总结</span><span class="rbsub" data-sub="week"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="freeCard"><span class="rbt">能自由使用的钱</span><span class="rbsub" data-sub="free"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="budCard2"><span class="rbt">预算</span><span class="rbsub" data-sub="bud"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="cmpCard"><span class="rbt">与上月对比</span><span class="rbsub" data-sub="cmp"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="trendCard"><span class="rbt">最近 6 个月</span><span class="rbsub" data-sub=""></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="yearCard"><span class="rbt">年度报表</span><span class="rbsub" data-sub=""></span><span class="rbc" aria-hidden="true">›</span></button></div>
+    <div id="catsPop"><div id="cats"></div>
+      <div id="avBox" class="hint" hidden></div></div>
     <div class="card" id="freeCard">
       <h2 id="freeTitle">能自由使用的钱</h2>
       <div id="freeBody"></div>
@@ -390,7 +399,7 @@ body.sheet-open{overflow:hidden}
       <div id="cmp"></div>
       <p class="msg" id="cmpNote"></p>
     </div>
-    <div class="card">
+    <div class="card" id="trendCard">
       <h2>最近 6 个月</h2>
       <div id="trend"></div>
     </div>
@@ -414,14 +423,7 @@ body.sheet-open{overflow:hidden}
 
   <section id="p-set" hidden>
     <h2 class="pgtitle">设置</h2>
-    <div class="chips" id="setNav" style="margin-bottom:16px">
-      <button class="chip" data-jump="payCard">薪水</button>
-      <button class="chip" data-jump="budSetCard">预算</button>
-      <button class="chip" data-jump="mustCard">必花</button>
-      <button class="chip" data-jump="recCard">固定支出</button>
-      <button class="chip" data-jump="lockCard">应用锁</button>
-      <button class="chip" data-jump="syncCard">同步与备份</button>
-    </div>
+    <div class="rowlist"><button class="rowbtn" data-pop="payCard"><span class="rbt">薪水与通膨</span><span class="rbsub" data-sub="pay"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="budSetCard"><span class="rbt">每月预算</span><span class="rbsub" data-sub="budset"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="mustCard"><span class="rbt">必花分类</span><span class="rbsub" data-sub="must"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="recCard"><span class="rbt">每月固定支出</span><span class="rbsub" data-sub="rec"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="lockCard"><span class="rbt">应用锁</span><span class="rbsub" data-sub="lock"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="syncCard"><span class="rbt">同步 (Google Sheet)</span><span class="rbsub" data-sub="sync"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="bkCard"><span class="rbt">备份</span><span class="rbsub" data-sub=""></span><span class="rbc" aria-hidden="true">›</span></button></div>
     <div class="card" id="payCard">
       <h2>薪水与通膨</h2>
       <div class="grid">
@@ -635,16 +637,62 @@ function openSheet(name,opener){
   var el=$("sheet"+name);if(!el)return;
   if(!sheetOpen(name)){sheetStack.push(name);el.classList.add("on");sheetOpener=opener||document.activeElement}
   document.body.classList.add("sheet-open");applyInert();
-  var first=name==="Entry"?$("fa"):$("fq");
+  el.style.zIndex=50+sheetStack.length;
+  var first=name==="Entry"?$("fa"):name==="Hist"?$("fq"):el.querySelector(".lkbtn");
   setTimeout(function(){if(sheetOpen(name)&&first&&first.focus)first.focus()},60);
 }
 function closeSheet(name){
   var i=sheetStack.indexOf(name);if(i<0)return;
   sheetStack.splice(i,1);$("sheet"+name).classList.remove("on");
   if(name==="Entry"&&typeof editId!=="undefined"&&editId!==null)endEdit();
+  if(name==="P_dformCard"&&typeof debtEditId!=="undefined"&&debtEditId!==null)endDebtEdit();
   if(!sheetStack.length)document.body.classList.remove("sheet-open");
   applyInert();
+  if(typeof refreshPops==="function")refreshPops();
   var o=sheetOpener;if(!sheetStack.length&&o&&o.isConnected&&o.focus&&!locked)try{o.focus()}catch(e){}
+}
+/* info cards become pop-out windows: each [data-pop] button opens the element it names, which is moved into its own sheet (ids are kept) */
+function openPop(id){if($("sheetP_"+id))openSheet("P_"+id,document.querySelector('[data-pop="'+id+'"]'))}
+function closePop(id){closeSheet("P_"+id)}
+function buildPops(){
+  var seen={};
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pop]"),function(b){
+    var id=b.getAttribute("data-pop");if(seen[id])return;seen[id]=1;
+    var tgt=$(id);if(!tgt)return;
+    var sh=document.createElement("div");sh.className="sheet pop";sh.id="sheetP_"+id;sh.setAttribute("role","dialog");sh.setAttribute("aria-modal","true");sh.setAttribute("aria-labelledby","shT_"+id);
+    var label=b.querySelector(".rbt").textContent.replace(/^＋\s*/,"");
+    sh.innerHTML='<div class="shbg" data-close="P_'+id+'"></div><div class="shpanel"><div class="shbar"><h2 id="shT_'+id+'"></h2><button class="lkbtn" data-close="P_'+id+'" style="margin:0">完成</button></div><div class="shbody"></div></div>';
+    sh.querySelector("h2").textContent=label;
+    sh.querySelector(".shbody").appendChild(tgt);
+    document.body.appendChild(sh);
+    Array.prototype.forEach.call(sh.querySelectorAll("[data-close]"),function(x){x.addEventListener("click",function(){closeSheet("P_"+id)})});
+  });
+  document.addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest("[data-pop]");if(!b||b.hidden)return;
+    var id=b.getAttribute("data-pop");
+    if(id==="dformCard"&&typeof debtEditId!=="undefined"&&debtEditId!==null)endDebtEdit();
+    openPop(id);
+  });
+}
+function refreshPops(){
+  try{
+    var cm=today().slice(0,7),SUB={};
+    SUB.goal=function(){var n=goals().length;return n?n+" 个":"还没设"};
+    SUB.slist=function(){var n=S.expenses.filter(function(x){return x.cat===SKIP}).length;return n?n+" 次":""};
+    SUB.acct=function(){var n=accounts().length;return n?n+" 个":""};
+    SUB.dlist=function(){var n=debts().filter(function(d){return !d.settled&&!d.acct}).length;return n?n+" 笔未还清":""};
+    SUB.week=function(){var w=weekData(latestWeek(),7);return weekHasActivity(w)?"上周 "+rm0(w.tot):""};
+    SUB.free=function(){var f=freeMoney(cm);return f.wage>0?(f.left<0?"超支 "+rm0(-f.left):"还剩 "+rm0(f.left)):"先设薪水"};
+    SUB.bud=function(){var r=budgetRows(cm),o=r.filter(function(x){return x.state==="over"}).length;return r.length?r.length+" 项"+(o?"，"+o+" 项超支":""):""};
+    SUB.pay=function(){var w=salaryFor(cm).wage;return w>0?rm0(w)+" / 月":"未设"};
+    SUB.budset=function(){var r=budgetRows(cm);return r.length?r.length+" 项":"未设"};
+    SUB.must=function(){var n=Object.keys(mustSet()).length;return n?n+" 类":"未设"};
+    SUB.rec=function(){var n=recurs().length;return n?n+" 项":"没有"};
+    SUB.lock=function(){return L?"已开启":"未开启"};
+    SUB.sync=function(){return C.url&&C.token?(lastErr?"同步失败":"已连接"):"未连接"};
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sub]"),function(el){var f=SUB[el.getAttribute("data-sub")];el.textContent=f?f():""});
+    var bb=document.querySelector('[data-pop="budCard2"]');if(bb)bb.hidden=$("budCard2").hidden;
+  }catch(e){}
 }
 function closeAllSheets(){sheetStack.slice().reverse().forEach(closeSheet)}
 Array.prototype.forEach.call(document.querySelectorAll("[data-close]"),function(b){b.addEventListener("click",function(){closeSheet(b.getAttribute("data-close"))})});
@@ -688,6 +736,7 @@ function applyOp(op){
 }
 function queue(op){if(op)S.pending.push(op);save();clearTimeout(timer);timer=setTimeout(syncNow,600)}
 function syncUI(){
+  refreshPops();
   var el=$("syncBar"),n=S.pending.length+(S.setDirty?1:0);
   if(!C.url||!C.token){el.textContent="未连接 Google Sheet（只存在本机）";el.className="sync";return}
   if(lastErr){el.textContent="同步失败，已存本机"+(n?"（"+n+" 项待同步）":"")+"：稍后会自动重试";el.className="sync err";return}
@@ -980,7 +1029,7 @@ $("gadd").addEventListener("click",function(){
 $("goalList").addEventListener("click",function(e){
   var b=e.target.closest&&e.target.closest("button");if(!b)return;
   var ed=b.getAttribute("data-gedit"),del=b.getAttribute("data-gdel");
-  if(ed){var g=goals().filter(function(x){return String(x.id)===ed})[0];if(g){goalForm(true,g);window.scrollTo({top:$("goalCard").offsetTop-10,behavior:"smooth"})}}
+  if(ed){var g=goals().filter(function(x){return String(x.id)===ed})[0];if(g){goalForm(true,g);}}
   else if(del){
     if(b.getAttribute("data-sure")!=="1"){b.setAttribute("data-sure","1");b.textContent="再按确认";setTimeout(function(){if(b.isConnected){b.removeAttribute("data-sure");b.innerHTML="×"}},3000);return}
     if(goalEditId===del)goalForm(false);
@@ -1142,7 +1191,7 @@ function startDebtEdit(d){
   debtFormMode();
   $("dtitle").textContent="修改欠款";$("dadd").textContent="保存修改";$("dcancel").hidden=false;
   $("dmsg").textContent="类型和币种不能改（要改请删除后重新添加）；已有的还款记录会保留";
-  window.scrollTo({top:0,behavior:"smooth"});
+  openPop("dformCard");
 }
 function endDebtEdit(){
   debtEditId=null;$("dd").disabled=false;$("dc").disabled=false;
@@ -1150,7 +1199,7 @@ function endDebtEdit(){
   $("dtitle").textContent="新增欠款";$("dadd").textContent="添加";$("dcancel").hidden=true;$("dmsg").textContent="";
   debtFormMode();
 }
-$("dcancel").addEventListener("click",endDebtEdit);
+$("dcancel").addEventListener("click",function(){endDebtEdit();closePop("dformCard")});
 $("dadd").addEventListener("click",function(){
   var dir=$("dd").value,cur=$("dc").value,name=$("dn").value.trim(),a=parseFloat($("da").value),st=$("ds").value||today(),du=$("du").value,rt=parseFloat($("dr").value);
   if(!name||!(a>0)){$("dmsg").textContent="请填名称和金额";return}
@@ -1163,6 +1212,7 @@ $("dadd").addEventListener("click",function(){
   if(editing)endDebtEdit();else{$("dn").value="";$("da").value="";$("du").value="";$("dr").value=""}
   $("dmsg").textContent=editing?"已修改 ✓":"已添加 ✓";
   setTimeout(function(){$("dmsg").textContent=""},1800);
+  closePop("dformCard");
   toast(editing?"欠款已修改":"欠款已添加",name+" · "+(cur==="MYR"?rm(r2(a)):cur+" "+r2(a)));
   debtView();
 });
@@ -1341,7 +1391,7 @@ function weekBannerView(){
   $("wkBannerText").innerHTML=s+"。";$("weekBanner").hidden=false;
 }
 $("wkBannerOk").addEventListener("click",function(){try{localStorage.setItem(WKSEEN,latestWeek())}catch(e){}$("weekBanner").hidden=true});
-$("wkBannerGo").addEventListener("click",function(){wkStart=latestWeek();tab("sum");var c=$("weekCard");window.scrollTo({top:0});c.scrollIntoView&&c.scrollIntoView({block:"start"})});
+$("wkBannerGo").addEventListener("click",function(){wkStart=latestWeek();tab("sum");weekView();openPop("weekCard")});
 
 /* ---- salary history: row cat "Pay:<effective YYYY-MM>:<deduction %>", amt = net salary, id 8000000 + month index.
    A month uses the latest record that starts on or before it; before the first record the old single setting applies. ---- */
@@ -1498,14 +1548,13 @@ function homeView(){
 function settingsView(){
   fillSettings();recurView();mustChipsView();lockView();syncUI();
 }
-function jumpTo(id){var el=$(id);if(el&&el.scrollIntoView)el.scrollIntoView({block:"start",behavior:"smooth"})}
+function jumpTo(id){openPop(id)}
 $("setBtn").addEventListener("click",function(){tab(cur==="set"?lastMain:"set")});
 document.addEventListener("click",function(e){
   var g=e.target.closest&&e.target.closest("[data-go]");
-  if(g){tab(g.getAttribute("data-go"));var j=g.getAttribute("data-jump");if(j)setTimeout(function(){jumpTo(j)},50);return}
-  var j2=e.target.closest&&e.target.closest("#setNav [data-jump]");if(j2)jumpTo(j2.getAttribute("data-jump"));
+  if(g){closeAllSheets();tab(g.getAttribute("data-go"));var j=g.getAttribute("data-jump");if(j)setTimeout(function(){jumpTo(j)},50);return}
 });
-function openSync(){tab("set");setTimeout(function(){jumpTo("syncCard")},50)}
+function openSync(){closeAllSheets();tab("set");setTimeout(function(){jumpTo("syncCard")},50)}
 $("syncBar").addEventListener("click",function(){if(!C.url||!C.token||lastErr)openSync()});
 $("syncBar").addEventListener("keydown",function(e){if(e.key==="Enter"||e.key===" "){e.preventDefault();$("syncBar").click()}});
 
@@ -1703,7 +1752,7 @@ function sumView(){
     b.innerHTML='这个月「不必要」花了 <b>'+rm0(av)+'</b>。如果每个月都省下这个数，存 10 年（'+S.set.rate+'%）≈ <b>'+rm0(o.fv)+'</b>，现值约 '+rm0(pv(o.fv,10))+'。'}
   else b.hidden=true;
   cmpView(m);weekView();freeView();yearView();
-  $("budTitle2").textContent=m+" 预算";renderBudget($("budList2"),$("budCard2"),budgetRows(m));
+  $("budTitle2").textContent=m+" 预算";renderBudget($("budList2"),$("budCard2"),budgetRows(m));refreshPops();
 }
 function prevMonth(m,k){var y=+m.slice(0,4),n=+m.slice(5,7)-(k===undefined?1:k);while(n<1){n+=12;y--}return y+"-"+String(n).padStart(2,"0")}
 function monthData(m,skipId){
@@ -1856,7 +1905,7 @@ function applyInert(){
   var bg=lockInert||sheetStack.length>0;
   [document.querySelector(".wrap"),$("nav")].forEach(function(el){if(!el)return;if(bg){el.setAttribute("inert","");el.setAttribute("aria-hidden","true")}else{el.removeAttribute("inert");el.removeAttribute("aria-hidden")}});
   var t=$("toast");if(t){if(lockInert){t.setAttribute("inert","");t.setAttribute("aria-hidden","true")}else{t.removeAttribute("inert");t.removeAttribute("aria-hidden")}}
-  var h=$("sheetHist");if(h){var under=sheetStack.length>1&&sheetStack[sheetStack.length-1]!=="Hist";if(under)h.setAttribute("inert","");else h.removeAttribute("inert")}
+  Array.prototype.forEach.call(document.querySelectorAll(".sheet"),function(h){var i=sheetStack.indexOf(h.id.slice(5));if(i>=0&&i<sheetStack.length-1)h.setAttribute("inert","");else h.removeAttribute("inert")})
 }
 function padRender(){
   var st=padState;if(!st)return;
@@ -2079,7 +2128,7 @@ $("cs").addEventListener("click",function(){
 $("cx").addEventListener("click",function(){C.url="";C.token="";saveCfg();$("cu").value="";$("ct").value="";lastErr="";lastOk="";$("syncMsg").textContent="已断开（本机数据保留）";syncUI()});
 
 /* ---- init ---- */
-load();
+load();buildPops();
 $("fc").innerHTML=CATS.map(function(c){return '<option>'+c+(AVOID[c]?'':'')+'</option>'}).join("");
 $("fd").value=today();$("ds").value=today();$("cu").value=C.url;$("ct").value=C.token;
 $("swm").value=today().slice(0,7);$("si").value=S.set.infl;payInputs();payListView();
