@@ -765,7 +765,7 @@ function homeInsights(){
 }
 function homeView(){
   var t=today(),m=t.slice(0,7),has=spent().length>0||salaryFor(m).wage>0;
-  $("insightCard").hidden=!has;if(!has)return;
+  $("openIns").hidden=!has;if(!has)return;
   var todayAll=0;spent().forEach(function(x){if(x.date===t)todayAll+=x.amt});
   var ws=mondayOf(t),upto=((s2d(t).getDay()+6)%7)+1,wk=weekData(ws,upto),pw=weekData(addDays(ws,-7),upto),dd=wk.tot-pw.tot;
   var cur=monthData(m);
@@ -1159,6 +1159,7 @@ PL.on("sheet:close",function(name){
 PL.on("pop:open",function(id){if(id==="dformCard"&&debtEditId!==null)endDebtEdit()});
 PL.on("pops",function(){var bb=document.querySelector('[data-pop="budCard2"]');if(bb)bb.hidden=$("budCard2").hidden});
 (function(){
+  PL.sub("ins",function(){try{var n=homeInsights().length;return n?tl("{0} 条",n):""}catch(e){return ""}});
   var cm=function(){return today().slice(0,7)};
   PL.sub("goal",function(){var n=goals().length;return n?tl("{0} 个",n):"还没设"});
   PL.sub("slist",function(){var n=S.expenses.filter(function(x){return x.cat===SKIP}).length;return n?tl("{0} 次",n):""});

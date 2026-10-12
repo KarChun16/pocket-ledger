@@ -194,6 +194,20 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
 .rowbtn:first-child{border-top:0}.rowbtn:active{background:var(--surface2)}.rowbtn[hidden]{display:none}
 .rbt{flex:none}.rbsub{flex:1;min-width:0;text-align:right;color:var(--muted);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rbc{flex:none;color:var(--muted);font-size:22px;line-height:1}
 .shbody>.card{background:transparent;padding:0;margin-bottom:8px}.shbody>.card>h2:first-child{display:none}
+.homerow{margin-top:10px;border-radius:12px;background:var(--surface2);min-height:46px;padding:10px 14px;font-size:16px;border-top:0}
+.homerow:first-child{border-top:0}
+.cchips{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}
+.cchip{display:flex;align-items:center;gap:2px;background:var(--surface2);border-radius:14px;padding:8px 5px 8px 9px;min-width:0}
+.cchip .cinfo{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer;padding:0}
+.cchip .cn{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.cchip .cv{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.cchip .cg{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.cchip .cv.near{color:var(--warn)}.cchip .cv.over{color:var(--bad)}.cchip .cv.done{color:var(--good)}
+.cchip .cbtn{width:32px;height:32px;font-size:18px}
+.tcrow2{display:flex;align-items:center;gap:10px}
+.tcrow2 .tcl{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer;padding:0}
+.tcrow2 .tcmini{font-size:13px;color:var(--muted)}.tcrow2 .tcbig{font-size:30px;text-align:left}.tcrow2 .tcsub{font-size:13px;color:var(--muted)}
+.tcrow2 .btn{flex:none;min-height:44px}
 .ctr{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:.5px solid var(--line)}
 .ctr:first-child{border-top:0}
 .ctr .cinfo{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer;padding:0}
@@ -308,10 +322,7 @@ body.sheet-open{overflow:hidden}
         <p class="msg" id="freeMiniSub" style="margin:4px 0 0"></p>
       </div>
       <div class="homebtns"><button class="btn grow" id="openEntry">＋ 记一笔</button><button class="btn ghost grow" id="openHist">明细</button></div>
-      <div id="insightCard" hidden>
-        <div class="stat" id="homeStats"></div>
-        <ul class="wins" id="homeIns"></ul>
-      </div>
+      <button class="rowbtn homerow" id="openIns" data-pop="insightCard" hidden><span class="rbt">今日洞察</span><span class="rbsub" data-sub="ins"></span><span class="rbc" aria-hidden="true">›</span></button>
     </div>
     <div id="modCards"></div>
     <div class="note" id="weekBanner" hidden>
@@ -466,7 +477,12 @@ body.sheet-open{overflow:hidden}
   <section id="p-set" hidden>
     <h2 class="pgtitle">设置</h2>
     <div class="rowlist" id="setRows"><button class="rowbtn" data-pop="langCard"><span class="rbt">语言 / Language</span><span class="rbsub" data-sub="lang"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="payCard"><span class="rbt">薪水与通膨</span><span class="rbsub" data-sub="pay"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="budSetCard"><span class="rbt">每月预算</span><span class="rbsub" data-sub="budset"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="mustCard"><span class="rbt">必花分类</span><span class="rbsub" data-sub="must"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="recCard"><span class="rbt">每月固定支出</span><span class="rbsub" data-sub="rec"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="lockCard"><span class="rbt">应用锁</span><span class="rbsub" data-sub="lock"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="syncCard"><span class="rbt">同步 (Google Sheet)</span><span class="rbsub" data-sub="sync"></span><span class="rbc" aria-hidden="true">›</span></button><button class="rowbtn" data-pop="bkCard"><span class="rbt">备份</span><span class="rbsub" data-sub=""></span><span class="rbc" aria-hidden="true">›</span></button></div>
-    <div id="setHold" hidden></div>
+    <div id="setHold" hidden>
+      <div class="card" id="insightCard">
+        <div class="stat" id="homeStats"></div>
+        <ul class="wins" id="homeIns"></ul>
+      </div>
+    </div>
     <div class="card" id="langCard">
       <h2>语言 / Language</h2>
       <div class="chips" id="langChips"><button class="chip" data-lang="zh">中文</button><button class="chip" data-lang="en">English</button></div>

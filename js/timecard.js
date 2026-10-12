@@ -45,12 +45,25 @@ function tapSum(id,date){
   try{var m=PL.counters&&PL.counters.index()[id];var t=0;((m&&m[date])||[]).forEach(function(r){t+=r.val});return Math.round(t*1000)/1000}catch(e){return 0}
 }
 function smokeCount(date){return Math.round(tapSum("smoke",date))}
+/* only smoke breaks taken while clocked in cost work time: from the clock-in to the clock-out (to now, while still working).
+   before clocking in or after clocking out they do not count. A tap with no time at all is counted. */
+function smokeInWork(date,inT,outT){
+  var a=toMin(inT),b=toMin(outT),rows=[];
+  if(a===null)return 0;
+  try{var m=PL.counters&&PL.counters.index()["smoke"];rows=(m&&m[date])||[]}catch(e){}
+  var n=0;
+  rows.forEach(function(r){
+    var t=toMin(r.time),ok=t===null||(b===null?t>=a:(b>=a?(t>=a&&t<=b):(t>=a||t<=b)));
+    if(ok)n+=r.val;
+  });
+  return Math.round(n);
+}
 function isSet(v){return v!==undefined&&v!==null&&v!==""}
 function day(date){
   var r=PL.rec.get(dayId(date)),x=r?PL.rec.data(r):{};
   var c=cfg();
-  var smoke=isSet(x.smoke)?+x.smoke:smokeCount(date);
-  return {date:date,row:r||null,in:r?r.time:"",out:x.out||"",note:r?r.text:"",lunchSet:x.lunch,lunch:isSet(x.lunch)?+x.lunch:c.lunchMin,smokeSet:x.smoke,smoke:c.smokeOn?smoke:0,smokeRaw:smoke,
+  var smokeIn=smokeInWork(date,r?r.time:"",x.out||""),smoke=isSet(x.smoke)?+x.smoke:smokeIn;
+  return {date:date,row:r||null,in:r?r.time:"",out:x.out||"",note:r?r.text:"",lunchSet:x.lunch,lunch:isSet(x.lunch)?+x.lunch:c.lunchMin,smokeSet:x.smoke,smoke:c.smokeOn?smoke:0,smokeRaw:smokeIn,
     coffeeSet:x.coffee,waterSet:x.water,coffee:isSet(x.coffee)?+x.coffee:tapSum("coffee",date),water:isSet(x.water)?+x.water:tapSum("water",date),
     smokeTaps:smokeCount(date),coffeeTaps:tapSum("coffee",date),waterTaps:tapSum("water",date)};
 }
@@ -128,26 +141,52 @@ function plan(){try{return JSON.parse(localStorage.getItem(PLAN_KEY)||"{}")}catc
 function setPlan(o){var p=plan();Object.keys(o).forEach(function(k){p[k]=o[k]});try{localStorage.setItem(PLAN_KEY,JSON.stringify(p))}catch(e){}}
 var liveLeave=null;                                                   /* minutes: today's leave time for the ticking countdown */
 function drawHome(el){
-  var c=cfg(),t=today(),d=day(t),h=hours(d),wi=weekInfo(t),b="",sub="";
+  var c=cfg(),t=today(),d=day(t),h=hours(d),big="",lab="",sub="",btn="",mini=tl("打卡");
   liveLeave=null;
   if(!d.in){
-    b='<div class="tcmain"><div class="tcbig">'+esc(tl("还没上班打卡"))+'</div></div><div class="row" style="margin-top:12px"><button class="btn grow" id="tcIn">'+esc(tl("上班打卡"))+'</button></div>';
+    big='<span class="tcbig" style="font-size:20px">'+esc(tl("还没上班打卡"))+'</span>';
+    btn='<button class="btn" id="tcIn">'+esc(tl("上班打卡"))+'</button>';
   }else if(!d.out){
     var lt=leaveToday(t);liveLeave=lt.early?lt.leave:lt.normal;
-    sub=tl("上班 {0}",d.in);
-    b='<div class="tcmain"><div class="tcbig" id="tcLive">—</div><div class="tclabel" id="tcLabel"></div></div>'+
-      '<div class="msg" style="margin:6px 0 0">'+esc(tl("预计下班 {0}",fromMin(liveLeave)))+(d.smoke>0&&c.mode==="pure"?esc(tl(" · 抽烟 {0} 根，下班延后 {1} 分钟",d.smoke,d.smoke*c.smokeMin)):"")+'</div>'+
-      (lt.early?'<div class="hint good" style="margin-top:8px">'+tl("本周快达标了，今天 <b>{0}</b> 就能下班（正常是 {1}）",fromMin(lt.leave),fromMin(lt.normal))+'</div>':"")+
-      '<div class="row" style="margin-top:12px"><button class="btn grow" id="tcOut">'+esc(tl("下班打卡"))+'</button></div>';
+    mini=tl("打卡")+" · "+tl("上班 {0}",d.in);
+    big='<span class="tcbig" id="tcLive">—</span>';lab='<span class="tclabel" id="tcLabel" style="margin:0"></span>';
+    sub='<span class="tcsub">'+esc(tl("预计下班 {0}",fromMin(liveLeave)))+'</span>';      /* the smoking note is in the window */
+    btn='<button class="btn" id="tcOut">'+esc(tl("下班打卡"))+'</button>';
   }else{
     var w=worked(h,c.mode);
-    sub=tl("{0} – {1}",d.in,d.out);
-    b='<div class="tcmain"><div class="tcbig">'+hm(w)+'</div><div class="tclabel">'+esc(tl("今天工作"))+' · <span class="'+(w>=c.hoursPerDay*60?"tcok":"tcshort")+'">'+esc(tl(w>=c.hoursPerDay*60?"超时 {0}":"还差 {0}",hm(Math.abs(w-c.hoursPerDay*60))))+'</span></div></div>';
+    mini=tl("打卡")+" · "+tl("{0} – {1}",d.in,d.out);
+    big='<span class="tcbig">'+hm(w)+'</span>';
+    lab='<span class="tclabel" style="margin:0">'+esc(tl("今天工作"))+' · <span class="'+(w>=c.hoursPerDay*60?"tcok":"tcshort")+'">'+esc(tl(w>=c.hoursPerDay*60?"超时 {0}":"还差 {0}",hm(Math.abs(w-c.hoursPerDay*60))))+'</span></span>';
+    btn='<button class="btn ghost" id="tcDone">'+esc(tl("详情"))+'</button>';
+  }
+  el.innerHTML='<div class="tcrow2"><button class="tcl" id="tcMore" aria-label="'+esc(tl("打卡"))+'"><span class="tcmini">'+esc(mini)+'</span>'+big+lab+sub+'</button>'+btn+'</div>';
+  tick();
+  if(quickOpen())drawQuick();
+}
+/* the window behind the tile: what the one line leaves out */
+function quickOpen(){return !!($("sheetP_tcQuick")&&sheetOpen("P_tcQuick"))}
+function drawQuick(){
+  var body=$("tcQuickBody");if(!body)return;
+  var c=cfg(),t=today(),d=day(t),h=hours(d),wi=weekInfo(t),s="";
+  if(!d.in)s+='<p class="msg" style="margin:0">'+esc(tl("还没上班打卡"))+'</p>';
+  else if(!d.out){
+    var lt=leaveToday(t);
+    s+='<div class="tcmain" style="text-align:left"><div class="tclabel">'+esc(tl("上班 {0}",d.in))+'</div><div class="tcbig" style="font-size:36px">'+fromMin(lt.early?lt.leave:lt.normal)+'</div><div class="tclabel">'+esc(tl("预计下班"))+(lt.early?" · "+esc(tl("提前（正常是 {0}）",fromMin(lt.normal))):"")+'</div></div>';
+    if(lt.early)s+='<div class="hint good">'+tl("本周快达标了，今天 <b>{0}</b> 就能下班（正常是 {1}）",fromMin(lt.leave),fromMin(lt.normal))+'</div>';
+    if(d.smoke>0&&c.mode==="pure")s+='<p class="msg">'+esc(tl("抽烟 {0} 根，下班延后 {1} 分钟",d.smoke,d.smoke*c.smokeMin))+'</p>';
+  }else{
+    var w=worked(h,c.mode);
+    s+='<div class="tcmain" style="text-align:left"><div class="tclabel">'+esc(tl("{0} – {1}",d.in,d.out))+'</div><div class="tcbig" style="font-size:36px">'+hm(w)+'</div><div class="tclabel">'+esc(tl("今天工作"))+' · <span class="'+(w>=c.hoursPerDay*60?"tcok":"tcshort")+'">'+esc(tl(w>=c.hoursPerDay*60?"超时 {0}":"还差 {0}",hm(Math.abs(w-c.hoursPerDay*60))))+'</span></div></div>';
   }
   var pct=wi.target>0?Math.min(100,wi.done/wi.target*100):0;
-  b+='<div class="msg" style="margin:12px 0 0;display:flex;justify-content:space-between"><span>'+esc(tl("本周"))+'</span><span>'+hm(wi.done)+' / '+hm(wi.target)+'</span></div><div class="bar"><i class="'+(wi.done>=wi.target?"":"")+'" style="'+(wi.done>=wi.target?"background:var(--good);":"")+'width:'+pct+'%"></i></div>';
-  el.innerHTML='<div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="margin:0;font-size:13px;font-weight:600;color:var(--muted)">'+esc(tl("打卡"))+'</h2><button class="lkbtn" id="tcMore" style="margin:0">'+esc(sub||tl("详情"))+' ›</button></div>'+b;
-  tick();
+  s+='<div class="msg" style="margin:14px 0 0;display:flex;justify-content:space-between"><span>'+esc(tl("本周"))+'</span><span>'+hm(wi.done)+' / '+hm(wi.target)+'</span></div><div class="bar"><i style="'+(wi.done>=wi.target?"background:var(--good);":"")+'width:'+pct+'%"></i></div>';
+  s+='<div class="row" style="margin-top:14px"><button class="btn grow" id="tcOpenPage">'+esc(tl("打开完整打卡页"))+'</button></div>';
+  body.innerHTML=s;
+}
+function openQuick(){
+  PL.popup("tcQuick","打卡",'<div class="card" id="tcQuick"><div id="tcQuickBody"></div></div>');
+  PL.popTitle("tcQuick","打卡");
+  drawQuick();openPop("tcQuick");
 }
 function tick(){
   var el=$("tcLive");if(!el||liveLeave===null)return;
@@ -239,7 +278,7 @@ function drawDetail(){
     '<div><label>'+esc(tl("咖啡（杯）"))+'</label><input type="number" inputmode="decimal" step="any" min="0" id="tcECoffee" placeholder="'+sd.coffeeTaps+'" value="'+(isSet(sd.coffeeSet)?esc(String(sd.coffeeSet)):"")+'"></div><div><label>'+esc(tl("喝水（ml）"))+'</label><input type="number" inputmode="decimal" step="any" min="0" id="tcEWater" placeholder="'+sd.waterTaps+'" value="'+(isSet(sd.waterSet)?esc(String(sd.waterSet)):"")+'"></div>'+
     '<div class="full"><label>'+esc(tl("备注"))+'</label><input type="text" id="tcENote" maxlength="80" value="'+esc(sd.note)+'"></div></div>'+
     '<div class="row" style="margin-top:12px"><button class="btn grow" id="tcESave">'+esc(tl("保存"))+'</button><button class="btn ghost grow" id="tcEClear">'+esc(tl("清除这一天"))+'</button></div><div class="msg" id="tcEMsg"></div>'+
-    '<p class="msg">'+esc(tl("抽烟、咖啡、喝水的次数默认来自首页的计数器；这里留空就用默认值，填了就以这里为准（多出来的会显示成「没有记录时间」）。午休留空就用默认值。"))+'</p>';
+    '<p class="msg">'+esc(tl("抽烟、咖啡、喝水的次数默认来自首页的计数器（抽烟只算上班打卡之后、下班打卡之前的）；这里留空就用默认值，填了就以这里为准（多出来的会显示成「没有记录时间」）。午休留空就用默认值。"))+'</p>';
   body.innerHTML=h;
 }
 /* the 打卡 page (under 时间): the detail is a page now, not a window */
@@ -318,7 +357,7 @@ var SET_HTML='<div class="card" id="tcSet"><h2>打卡设置</h2><div class="grid
   '<div class="full"><label class="chk"><input type="checkbox" id="tcsDrink">首页显示喝水和咖啡</label></div>'+
   '<div><label for="tcsCup">一杯水多少 ml（点一下加多少）</label><input id="tcsCup" type="number" inputmode="decimal" min="1" step="any"></div><div><label for="tcsGoal">喝水每天目标 (ml)</label><input id="tcsGoal" type="number" inputmode="decimal" min="0" step="any"></div>'+
   '<div class="full"><label for="tcsCof">咖啡每天上限（杯，0 = 不设）</label><input id="tcsCof" type="number" inputmode="decimal" min="0" step="any"></div></div>'+
-  '<div class="msg" id="tcsMsg"></div><p class="msg">下班时间 = 上班 + 每天工时 + 午休 + 抽烟次数 × 每根扣的分钟。每周目标 = 每天工时 × 每周工作天数。设置存在 Records 分页，所有设备同步。</p></div>';
+  '<div class="msg" id="tcsMsg"></div><p class="msg">下班时间 = 上班 + 每天工时 + 午休 + 抽烟次数 × 每根扣的分钟；抽烟只算上班打卡之后、下班打卡之前的，上班前和下班后的不算。每周目标 = 每天工时 × 每周工作天数。设置存在 Records 分页，所有设备同步。</p></div>';
 var SET_IDS=["tcsH","tcsL","tcsD","tcsS","tcsM","tcsO","tcsDrink","tcsCup","tcsGoal","tcsCof"];
 function fillSet(){
   if(!$("tcsH"))return;
@@ -363,15 +402,16 @@ PL.module({
     PL.on("data",function(){fillSet();if(pageOpen()&&!(document.activeElement&&$("tcDetailBody").contains(document.activeElement)&&/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)))drawDetail()});
     $("tcHome").addEventListener("click",function(e){
       var b=e.target.closest&&e.target.closest("button");if(!b)return;
-      if(b.id==="tcIn")clockIn();else if(b.id==="tcOut")clockOut();else if(b.id==="tcMore")tab("timecard");
+      if(b.id==="tcIn")clockIn();else if(b.id==="tcOut")clockOut();else if(b.id==="tcMore"||b.id==="tcDone")openQuick();
     });
+    document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("#tcOpenPage");if(b){closeAllSheets();tab("timecard")}});
     SET_IDS.forEach(function(id){$(id).addEventListener("change",saveSet);$(id).addEventListener("input",function(){this.setAttribute("data-dirty","1")})});
     setInterval(function(){if(!document.hidden)tick()},1000);
     document.addEventListener("visibilitychange",function(){if(!document.hidden)drawHome($("tcHome"))});
   },
   en:{
-    exact:{"打卡":"Clock","详情":"Details","还没上班打卡":"Not clocked in yet","上班打卡":"Clock in","下班打卡":"Clock out","今天工作":"Worked today","本周":"This week","距离下班":"Until you can leave","已经过了下班时间":"Past leaving time","本周合计":"Week total","工时明细":"Hours breakdown","纯工作（扣抽烟）":"Work only (smoke breaks removed)","总工时（抽烟也算）":"Total (smoke breaks count)","本周下班规划":"This week's leaving plan","最后一个工作日几点上班":"Last workday: clock-in time","今天几点下班（假设）":"Today's clock-out (assumed)","修改这一天":"Edit a day","日期":"Date","上班":"In","下班":"Out","午休（分）":"Lunch (min)","抽烟（根）":"Smoking (cigarettes)","备注":"Note","保存":"Save","清除这一天":"Clear this day","再按确认":"Tap again to confirm","上一周":"Previous week","下一周":"Next week","请选日期":"Please choose a date","要先有上班时间，才能记下班时间":"Add a clock-in time before a clock-out time","午休和抽烟请填 0 或更大的数字":"Lunch and smoking must be 0 or more","已保存":"Saved","已清除":"Cleared","上班打卡后，这里会算出本周几点可以下班。":"After you clock in, this shows when you can leave this week.","今天是本周最后一个工作日。":"Today is the last workday of the week.","照这样，本周的工时在最后一个工作日之前就够了，最后一天可以不上班或随时走。":"At this pace the week's hours are done before the last workday, so you can skip it or leave any time.","抽烟的次数默认来自首页的「抽烟」计数器；午休和抽烟栏位留空就用默认值。":"The smoking count comes from the Smoking counter on the home page by default; leave lunch and smoking empty to use the defaults.","打卡设置":"Timecard settings","每天工时（小时）":"Hours per day","午休（分钟）":"Lunch (minutes)","每周工作几天":"Workdays per week","每根烟扣几分钟":"Minutes deducted per cigarette","工时怎么算":"How hours are counted","抽烟的时间不算工作（扣掉）":"Smoke breaks are not work (deducted)","抽烟也算工作（不扣）":"Smoke breaks count as work (not deducted)","打卡时把抽烟次数算进去":"Include smoking in the hours","下班时间 = 上班 + 每天工时 + 午休 + 抽烟次数 × 每根扣的分钟。每周目标 = 每天工时 × 每周工作天数。设置存在 Records 分页，所有设备同步。":"Leave time = clock-in + hours per day + lunch + smoking count × minutes per cigarette. Weekly target = hours per day × workdays per week. Settings live in the Records sheet and sync to all devices.","每天工时请填 1 到 16 小时":"Hours per day must be 1 to 16","午休请填 0 到 240 分钟":"Lunch must be 0 to 240 minutes","每周工作天数请填 1 到 7":"Workdays per week must be 1 to 7","每根烟扣的分钟请填 0 到 60":"Minutes per cigarette must be 0 to 60","今天的时间线":"Today's timeline","这一天还没有记录。":"Nothing recorded for this day.","时间":"Time","数量":"Amount","取消":"Cancel","删除":"Delete","清除":"Clear","补记一笔":"Add a missed one","补记":"Add","计数器":"Counter","请填时间":"Please enter a time","数量要大于 0":"The amount must be above 0","日期或时间不对":"The date or time isn't valid","咖啡（杯）":"Coffee (cups)","喝水（ml）":"Water (ml)","午休、抽烟、咖啡、喝水请填 0 或更大的数字":"Lunch, smoking, coffee and water must be 0 or more","抽烟、咖啡、喝水的次数默认来自首页的计数器；这里留空就用默认值，填了就以这里为准（多出来的会显示成「没有记录时间」）。午休留空就用默认值。":"Smoking, coffee and water counts come from the home-page counters by default. Leave a field empty to use that; fill it in to override it (the extra shows up as “no time recorded”). Leave lunch empty for the default.","喝水和咖啡":"Water and coffee","首页显示喝水和咖啡":"Show water and coffee on the home page","一杯水多少 ml（点一下加多少）":"Water per tap (ml)","喝水每天目标 (ml)":"Daily water target (ml)","咖啡每天上限（杯，0 = 不设）":"Daily coffee limit (cups, 0 = none)","一杯水请填大于 0 的毫升数":"Water per tap must be above 0 ml","喝水目标和咖啡上限请填 0 或更大的数字":"Water target and coffee limit must be 0 or more","已补记 {0}":"Added a missed {0}"},
-    tpl:{"上班 {0}":"In {0}","{0} – {1}":"{0} – {1}","预计下班 {0}":"Leave at {0}"," · 抽烟 {0} 根，下班延后 {1} 分钟":" · {0} {0|cigarette|cigarettes}, leaving {1} min later","本周快达标了，今天 <b>{0}</b> 就能下班（正常是 {1}）":"The week is almost done — you can leave at <b>{0}</b> today (normally {1})","超时 {0}":"Overtime {0}","还差 {0}":"{0} short","今天工作 {0}":"Worked {0} today","{0} 那一周":"Week of {0}","周{0}":"{0}","今天 {0}":"Today {0}","本周 {0}":"Week {0}","今天最早 <b>{0}</b> 可以下班（本周只差 {1}，正常是 {2}）":"You can leave as early as <b>{0}</b> today (only {1} left this week; normally {2})","今天 <b>{0}</b> 下班（正常，本周还差 {1}）":"Leave at <b>{0}</b> today (normal; {1} left this week)","最后一个工作日（周{0}）要工作 <b>{1}</b>，{2} 上班的话 <b>{3}</b> 就能下班。":"Last workday ({0}) needs <b>{1}</b> of work: clock in at {2} and you can leave at <b>{3}</b>.","{0} 小时 / 天":"{0} h / day","{0} 的时间线":"Timeline for {0}","另有 {0} {1} 没有记录时间（{2}）":"{0} {1} more with no time recorded ({2})"}
+    exact:{"打卡":"Clock","详情":"Details","还没上班打卡":"Not clocked in yet","上班打卡":"Clock in","下班打卡":"Clock out","今天工作":"Worked today","本周":"This week","距离下班":"Until you can leave","已经过了下班时间":"Past leaving time","本周合计":"Week total","工时明细":"Hours breakdown","纯工作（扣抽烟）":"Work only (smoke breaks removed)","总工时（抽烟也算）":"Total (smoke breaks count)","本周下班规划":"This week's leaving plan","最后一个工作日几点上班":"Last workday: clock-in time","今天几点下班（假设）":"Today's clock-out (assumed)","修改这一天":"Edit a day","日期":"Date","上班":"In","下班":"Out","午休（分）":"Lunch (min)","抽烟（根）":"Smoking (cigarettes)","备注":"Note","保存":"Save","清除这一天":"Clear this day","再按确认":"Tap again to confirm","上一周":"Previous week","下一周":"Next week","请选日期":"Please choose a date","要先有上班时间，才能记下班时间":"Add a clock-in time before a clock-out time","午休和抽烟请填 0 或更大的数字":"Lunch and smoking must be 0 or more","已保存":"Saved","已清除":"Cleared","上班打卡后，这里会算出本周几点可以下班。":"After you clock in, this shows when you can leave this week.","今天是本周最后一个工作日。":"Today is the last workday of the week.","预计下班":"Expected leave time","打开完整打卡页":"Open the full clock page","照这样，本周的工时在最后一个工作日之前就够了，最后一天可以不上班或随时走。":"At this pace the week's hours are done before the last workday, so you can skip it or leave any time.","抽烟的次数默认来自首页的「抽烟」计数器；午休和抽烟栏位留空就用默认值。":"The smoking count comes from the Smoking counter on the home page by default; leave lunch and smoking empty to use the defaults.","打卡设置":"Timecard settings","每天工时（小时）":"Hours per day","午休（分钟）":"Lunch (minutes)","每周工作几天":"Workdays per week","每根烟扣几分钟":"Minutes deducted per cigarette","工时怎么算":"How hours are counted","抽烟的时间不算工作（扣掉）":"Smoke breaks are not work (deducted)","抽烟也算工作（不扣）":"Smoke breaks count as work (not deducted)","打卡时把抽烟次数算进去":"Include smoking in the hours","下班时间 = 上班 + 每天工时 + 午休 + 抽烟次数 × 每根扣的分钟；抽烟只算上班打卡之后、下班打卡之前的，上班前和下班后的不算。每周目标 = 每天工时 × 每周工作天数。设置存在 Records 分页，所有设备同步。":"Leave time = clock-in + hours per day + lunch + smoking count × minutes per cigarette; only smoke breaks between clock-in and clock-out count — before clocking in or after clocking out they do not. Weekly target = hours per day × workdays per week. Settings live in the Records sheet and sync to all devices.","每天工时请填 1 到 16 小时":"Hours per day must be 1 to 16","午休请填 0 到 240 分钟":"Lunch must be 0 to 240 minutes","每周工作天数请填 1 到 7":"Workdays per week must be 1 to 7","每根烟扣的分钟请填 0 到 60":"Minutes per cigarette must be 0 to 60","今天的时间线":"Today's timeline","这一天还没有记录。":"Nothing recorded for this day.","时间":"Time","数量":"Amount","取消":"Cancel","删除":"Delete","清除":"Clear","补记一笔":"Add a missed one","补记":"Add","计数器":"Counter","请填时间":"Please enter a time","数量要大于 0":"The amount must be above 0","日期或时间不对":"The date or time isn't valid","咖啡（杯）":"Coffee (cups)","喝水（ml）":"Water (ml)","午休、抽烟、咖啡、喝水请填 0 或更大的数字":"Lunch, smoking, coffee and water must be 0 or more","抽烟、咖啡、喝水的次数默认来自首页的计数器（抽烟只算上班打卡之后、下班打卡之前的）；这里留空就用默认值，填了就以这里为准（多出来的会显示成「没有记录时间」）。午休留空就用默认值。":"Smoking, coffee and water counts come from the home-page counters by default (smoking only counts between clock-in and clock-out). Leave a field empty to use that; fill it in to override it (the extra shows up as “no time recorded”). Leave lunch empty for the default.","喝水和咖啡":"Water and coffee","首页显示喝水和咖啡":"Show water and coffee on the home page","一杯水多少 ml（点一下加多少）":"Water per tap (ml)","喝水每天目标 (ml)":"Daily water target (ml)","咖啡每天上限（杯，0 = 不设）":"Daily coffee limit (cups, 0 = none)","一杯水请填大于 0 的毫升数":"Water per tap must be above 0 ml","喝水目标和咖啡上限请填 0 或更大的数字":"Water target and coffee limit must be 0 or more","已补记 {0}":"Added a missed {0}"},
+    tpl:{"上班 {0}":"In {0}","{0} – {1}":"{0} – {1}","预计下班 {0}":"Leave at {0}"," · 抽烟 {0} 根，下班延后 {1} 分钟":" · {0} {0|cigarette|cigarettes}, leaving {1} min later","本周快达标了，今天 <b>{0}</b> 就能下班（正常是 {1}）":"The week is almost done — you can leave at <b>{0}</b> today (normally {1})","超时 {0}":"Overtime {0}","还差 {0}":"{0} short","今天工作 {0}":"Worked {0} today","{0} 那一周":"Week of {0}","周{0}":"{0}","今天 {0}":"Today {0}","本周 {0}":"Week {0}","今天最早 <b>{0}</b> 可以下班（本周只差 {1}，正常是 {2}）":"You can leave as early as <b>{0}</b> today (only {1} left this week; normally {2})","今天 <b>{0}</b> 下班（正常，本周还差 {1}）":"Leave at <b>{0}</b> today (normal; {1} left this week)","最后一个工作日（周{0}）要工作 <b>{1}</b>，{2} 上班的话 <b>{3}</b> 就能下班。":"Last workday ({0}) needs <b>{1}</b> of work: clock in at {2} and you can leave at <b>{3}</b>.","{0} 小时 / 天":"{0} h / day","提前（正常是 {0}）":"early (normally {0})","抽烟 {0} 根，下班延后 {1} 分钟":"{0} {0|cigarette|cigarettes}, leaving {1} min later","{0} 的时间线":"Timeline for {0}","另有 {0} {1} 没有记录时间（{2}）":"{0} {1} more with no time recorded ({2})"}
   }
 });
 PL.timecard={cfg:cfg,saveCfg:saveCfg,day:day,saveDay:saveDay,hours:hours,weekInfo:weekInfo,leaveToday:leaveToday,planWeek:planWeek,leaveAt:leaveAt,dayId:dayId,hm:hm,toMin:toMin,fromMin:fromMin,clockIn:clockIn,clockOut:clockOut};   /* for tests */
