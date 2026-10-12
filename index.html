@@ -194,6 +194,20 @@ html.locked .wrap,html.locked .tabbar{visibility:hidden}
 .rowbtn:first-child{border-top:0}.rowbtn:active{background:var(--surface2)}.rowbtn[hidden]{display:none}
 .rbt{flex:none}.rbsub{flex:1;min-width:0;text-align:right;color:var(--muted);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rbc{flex:none;color:var(--muted);font-size:22px;line-height:1}
 .shbody>.card{background:transparent;padding:0;margin-bottom:8px}.shbody>.card>h2:first-child{display:none}
+.ctr{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:.5px solid var(--line)}
+.ctr:first-child{border-top:0}
+.ctr .cinfo{flex:1;min-width:0;display:flex;align-items:center;gap:10px;border:0;background:transparent;color:var(--ink);font:inherit;text-align:left;cursor:pointer;padding:0}
+.ctr .ci{font-size:28px;line-height:1;flex:none}
+.ctr .ct{display:flex;flex-direction:column;min-width:0;flex:1}
+.ctr .cn{font-size:17px;font-weight:600}
+.ctr .cs{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctr .cv{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;text-align:right;flex:none}
+.ctr .cv small{font-size:13px;color:var(--muted);font-weight:500}
+.ctr .cv.near{color:var(--warn)}.ctr .cv.over{color:var(--bad)}.ctr .cv.done{color:var(--good)}
+.rrow.t3{grid-template-columns:1fr auto auto}
+.cbtn{width:44px;height:44px;border-radius:99px;border:0;font:inherit;font-size:24px;font-weight:600;cursor:pointer;background:var(--tint);color:var(--accent);flex:none;padding:0;line-height:1}
+.cbtn.plus{background:var(--accent);color:var(--accent-ink)}.cbtn.minus{width:36px;height:36px;font-size:20px}
+.cbtn:disabled{opacity:.35;cursor:default}
 .sheet{position:fixed;inset:0;z-index:50;display:none}
 .sheet.on{display:block}
 #sheetHist{z-index:51}#sheetEntry{z-index:52}
@@ -575,6 +589,7 @@ body.sheet-open{overflow:hidden}
 <script src="js/records.js"></script>
 <script src="js/lock.js"></script>
 <script src="js/money.js"></script>
+<script src="js/counters.js"></script>
 <script src="js/init.js"></script>
 </body>
 </html>

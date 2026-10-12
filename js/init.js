@@ -1,7 +1,7 @@
 /* init.js
    Start-up sequence. Loaded last. The features do their own set-up on the "init" event. */
 load();buildPops();
-PL.emit("init");
+PL.emit("init");PL.ready=true;
 syncUI();
 startLang();
 syncNow();

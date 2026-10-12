@@ -4,7 +4,7 @@
    events  PL.on(name, fn) / PL.emit(name, arg): "init" "show:<page>" "settings" "synced" "online" "visible" "data" "sheet:close" "pop:open"
    rows    PL.sub(name, fn): the grey summary text on a settings/overview row
    modules PL.module({id, title, page, home, settings, init, en}) adds a page + bottom tab, a home card and settings rows (see below) */
-var PL={_ev:{},_sub:{},_mods:{}};
+var PL={_ev:{},_sub:{},_mods:{},ready:false};
 PL.on=function(e,f){(PL._ev[e]=PL._ev[e]||[]).push(f)};
 PL.emit=function(e,a){(PL._ev[e]||[]).slice().forEach(function(f){try{f(a)}catch(x){if(window.console)console.error("PL "+e,x)}})};
 PL.sub=function(name,fn){PL._sub[name]=fn};
@@ -240,7 +240,8 @@ var CJK=/[\u3000-\u303f\u4e00-\u9fff\uff00-\uffef]/;
 
 /* tl(template, ...args): a sentence with {0} {1} slots (and {0|one|many} plurals) - the Chinese text is the key, English comes from EN_T */
 function tl(zh){
-  var a=arguments,s=(LANG==="en"&&EN_T[zh]!==undefined)?EN_T[zh]:zh;
+  var a=arguments,s=zh;
+  if(LANG==="en")s=EN_T[zh]!==undefined?EN_T[zh]:(EN[zh]!==undefined?EN[zh]:zh);
   return s.replace(/\{(\d+)\|([^|}]*)\|([^}]*)\}/g,function(_,i,one,many){return +a[+i+1]===1?one:many}).replace(/\{(\d+):mon\}/g,function(_,i){return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+a[+i+1]-1]||a[+i+1]}).replace(/\{(\d+)\}/g,function(_,i){var v=a[+i+1];return (LANG==="en"&&typeof v==="string"&&CJK.test(v))?trText(v):v});
 }
 function trText(s){
@@ -286,6 +287,22 @@ function startLang(){
 
 PL.on("init",function(){$("cu").value=C.url;$("ct").value=C.token});
 
+/* a pop-out window that has no row of its own (opened from code): PL.popup(id, title, html) then openPop(id); PL.popTitle(id, text) renames it */
+PL.popup=function(id,title,html){
+  if($("sheetP_"+id))return id;
+  var card=document.createElement("div");card.innerHTML=html;var el=card.firstElementChild;el.id=el.id||id;
+  $("setHold").appendChild(el);
+  var fake=document.createElement("button");fake.setAttribute("data-pop",id);fake.innerHTML='<span class="rbt"></span>';fake.querySelector(".rbt").textContent=title;
+  makePop(fake);
+  return id;
+};
+PL.popTitle=function(id,text,icon){
+  var h=$("shT_"+id);if(!h)return;
+  h.textContent="";
+  if(icon)h.appendChild(document.createTextNode(icon+" "));
+  var sp=document.createElement("span");sp.textContent=text;h.appendChild(sp);
+};
+
 /* ---- modules ----
    PL.module({
      id:"counter",                       // unique, lower-case letters/digits
@@ -299,6 +316,7 @@ PL.on("init",function(){$("cu").value=C.url;$("ct").value=C.token});
 PL.module=function(spec){
   if(!spec||!/^[a-z][a-z0-9]*$/.test(spec.id||"")||PL._mods[spec.id])return null;
   PL._mods[spec.id]=spec;
+  var draws=[];
   if(spec.en){for(var k in (spec.en.exact||{}))EN[k]=spec.en.exact[k];for(var t in (spec.en.tpl||{}))EN_T[t]=spec.en.tpl[t]}
   if(spec.page){
     var sec=document.createElement("section");sec.id="p-"+spec.id;sec.hidden=true;sec.innerHTML=spec.page.html||"";
@@ -315,7 +333,7 @@ PL.module=function(spec){
     var hc=document.createElement("div");hc.className="card";hc.id=spec.home.id||("home_"+spec.id);hc.innerHTML=spec.home.html||"";
     $("modCards").appendChild(hc);
     var draw=function(){if(spec.home.render)spec.home.render(hc)};
-    PL.on("show:log",draw);PL.on("data",draw);draw();
+    PL.on("show:log",draw);PL.on("data",draw);draws.push(draw);
   }
   (spec.settings||[]).forEach(function(r){
     var card=document.createElement("div");card.innerHTML=r.html||"";card.firstElementChild.id=card.firstElementChild.id||r.id;
@@ -327,8 +345,8 @@ PL.module=function(spec){
     if(r.sub)PL.sub("mod_"+r.id,r.sub);
     makePop(btn);
   });
-  if(spec.init)spec.init();
-  refreshPops();
-  if(LANG==="en")trNode(document.body);
+  /* the module's own set-up and first drawing wait until the saved data has been loaded ("init"); a module added later starts at once */
+  var start=function(){draws.forEach(function(f){f()});if(spec.init)spec.init();refreshPops();if(LANG==="en")trNode(document.body)};
+  if(PL.ready)start();else PL.on("init",start);
   return spec;
 };
