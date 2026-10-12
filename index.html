@@ -527,6 +527,7 @@ body.sheet-open{overflow:hidden}
         <div class="full"><label for="fc">分类</label><select id="fc"></select></div>
       </div>
       <div id="liveHint" class="hint" hidden></div>
+      <div id="keepRow" style="margin-top:12px"><label class="chk"><input type="checkbox" id="keepOpen">记完不关窗口，继续记下一笔</label></div>
       <div class="row" style="margin-top:14px"><button class="btn grow" id="add">记下来</button><button class="btn good grow" id="skip">我忍住了</button><button class="btn ghost grow" id="cancelEdit" hidden>取消修改</button></div>
       <div class="msg" id="addMsg"></div>
     </div>
@@ -885,13 +886,15 @@ function startEdit(r){
   $("fd").value=r.date;$("fa").value=r.amt;$("fi").value=r.item;
   if(![].some.call($("fc").options,function(o){return o.value===r.cat}))$("fc").appendChild(new Option(r.cat,r.cat));
   $("fc").value=r.cat;
-  $("add").textContent="保存修改";$("cancelEdit").hidden=false;$("skip").hidden=true;$("addMsg").textContent="正在修改这一笔";
+  $("add").textContent="保存修改";$("cancelEdit").hidden=false;$("skip").hidden=true;$("keepRow").hidden=true;$("addMsg").textContent="正在修改这一笔";
   hint();openSheet("Entry");
 }
 function endEdit(){
-  editId=null;$("shEntryTitle").textContent="记一笔";$("add").textContent="记下来";$("cancelEdit").hidden=true;$("skip").hidden=false;
+  editId=null;$("shEntryTitle").textContent="记一笔";$("add").textContent="记下来";$("cancelEdit").hidden=true;$("skip").hidden=false;$("keepRow").hidden=false;
   $("fa").value="";$("fi").value="";$("fd").value=today();$("liveHint").hidden=true;$("addMsg").textContent="";
 }
+try{$("keepOpen").checked=localStorage.getItem("pocketledger.keep")==="1"}catch(e){}
+$("keepOpen").addEventListener("change",function(){try{localStorage.setItem("pocketledger.keep",this.checked?"1":"0")}catch(e){}});
 $("cancelEdit").addEventListener("click",function(){endEdit();closeSheet("Entry")});
 $("openEntry").addEventListener("click",function(){if(editId!==null)endEdit();openSheet("Entry",this)});
 $("openHist").addEventListener("click",function(){openSheet("Hist",this);renderList()});
@@ -906,7 +909,7 @@ $("add").addEventListener("click",function(){
   $("fa").value="";$("fi").value="";$("liveHint").hidden=true;$("addMsg").textContent="";
   $("lm").value=d.slice(0,7);listView();
   var w=budgetRows(d.slice(0,7)).filter(function(r){return r.state!=="ok"&&(r.key==="TOTAL"||r.key===rec.cat||(r.key==="AVOID"&&AVOID[rec.cat]))});
-  closeSheet("Entry");
+  if(!editing&&$("keepOpen").checked){$("fd").value=d;$("fa").focus()}else closeSheet("Entry");
   toast(editing?"修改成功":"记账成功",rec.cat+" · "+rm(rec.amt),w.length?budgetWarnText(w):"",w.some(function(r){return r.state==="over"}));
 });
 
