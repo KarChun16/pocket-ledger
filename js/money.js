@@ -160,7 +160,13 @@ function hint(){
   h.hidden=false;h.className="hint"+(bad?" bad":"");h.innerHTML=parts.join("<br>");
 }
 $("fa").addEventListener("input",hint);$("fc").addEventListener("change",hint);
-var editId=null;
+var editId=null,convId=null;     /* convId: a skipped purchase that turned into a real one - saving the entry removes the skip */
+function startConvert(r){
+  editId=null;convId=String(r.id);$("shEntryTitle").textContent="还是买了";
+  $("fd").value=today();$("fa").value=r.amt;$("fi").value=r.item;
+  $("add").textContent="记成支出";$("cancelEdit").hidden=false;$("skip").hidden=true;$("keepRow").hidden=true;$("addMsg").textContent="你之前忍住了这笔，记下来就会把「省下」撤掉，改成真正的支出";
+  hint();openSheet("Entry");
+}
 function startEdit(r){
   editId=String(r.id);$("shEntryTitle").textContent="修改这一笔";
   $("fd").value=r.date;$("fa").value=r.amt;$("fi").value=r.item;
@@ -170,27 +176,28 @@ function startEdit(r){
   hint();openSheet("Entry");
 }
 function endEdit(){
-  editId=null;$("shEntryTitle").textContent="记一笔";$("add").textContent="记下来";$("cancelEdit").hidden=true;$("skip").hidden=false;$("keepRow").hidden=false;
+  editId=null;convId=null;$("shEntryTitle").textContent="记一笔";$("add").textContent="记下来";$("cancelEdit").hidden=true;$("skip").hidden=false;$("keepRow").hidden=false;
   $("fa").value="";$("fi").value="";$("fd").value=today();$("liveHint").hidden=true;$("addMsg").textContent="";
 }
 try{$("keepOpen").checked=localStorage.getItem("pocketledger.keep")==="1"}catch(e){}
 $("keepOpen").addEventListener("change",function(){try{localStorage.setItem("pocketledger.keep",this.checked?"1":"0")}catch(e){}});
 $("cancelEdit").addEventListener("click",function(){endEdit();closeSheet("Entry")});
-$("openEntry").addEventListener("click",function(){if(editId!==null)endEdit();openSheet("Entry",this)});
+$("openEntry").addEventListener("click",function(){if(editId!==null||convId!==null)endEdit();openSheet("Entry",this)});
 $("openHist").addEventListener("click",function(){openSheet("Hist",this);renderList()});
 $("add").addEventListener("click",function(){
   var a=parseFloat($("fa").value),it=$("fi").value.trim(),d=$("fd").value||today();
   if(!(a>0)||!it){$("addMsg").textContent="请填金额和项目";return}
-  var editing=editId!==null;
+  var editing=editId!==null,conv=convId;
   var rec={id:editing?+editId:Date.now(),date:d,item:it,cat:$("fc").value,amt:Math.round(a*100)/100};
   if(editing)S.expenses=S.expenses.filter(function(x){return String(x.id)!==editId});
+  if(conv!==null){S.expenses=S.expenses.filter(function(x){return String(x.id)!==conv});queue({op:"del",id:+conv})}      /* the purchase happened after all: the skip no longer counts */
   S.expenses.push(rec);queue({op:"add",row:rec});syncUI();
-  if(editing)endEdit();
+  if(editing||conv!==null)endEdit();
   $("fa").value="";$("fi").value="";$("liveHint").hidden=true;$("addMsg").textContent="";
   $("lm").value=d.slice(0,7);listView();
   var w=budgetRows(d.slice(0,7)).filter(function(r){return r.state!=="ok"&&(r.key==="TOTAL"||r.key===rec.cat||(r.key==="AVOID"&&AVOID[rec.cat]))});
   if(!editing&&$("keepOpen").checked){$("fd").value=d;$("fa").focus()}else closeSheet("Entry");
-  toast(editing?"修改成功":"记账成功",rec.cat+" · "+rm(rec.amt),w.length?budgetWarnText(w):"",w.some(function(r){return r.state==="over"}));
+  toast(editing?"修改成功":conv!==null?"已改成支出":"记账成功",rec.cat+" · "+rm(rec.amt),w.length?budgetWarnText(w):"",w.some(function(r){return r.state==="over"}));
 });
 
 $("skip").addEventListener("click",function(){
@@ -281,10 +288,12 @@ function saveView(){
     b.innerHTML=tl('如果这些钱真的存起来（{0}%），现在约 <b>{1}</b>；再放 10 年 ≈ <b>{2}</b>，今天的购买力约 {3}。',S.set.rate,rm0(now),rm0(f),rm0(pv(f,10)))}
   else b.hidden=true;
   $("slist").innerHTML=rows.length?rows.map(function(x){
-    return '<div class="item"><div class="d">'+x.date.slice(5)+'</div><div class="m"><b>'+esc(x.item)+'</b><span class="tag sk">忍住了</span></div><div class="amt">'+rm(x.amt)+'</div><button class="x" data-sdel="'+x.id+'" aria-label="删除">×</button></div>';
+    return '<div class="item"><div class="d">'+x.date.slice(5)+'</div><div class="m"><b>'+esc(x.item)+'</b><span class="tag sk">忍住了</span></div><div class="amt">'+rm(x.amt)+'</div><button class="lkbtn" style="margin:0" data-sbuy="'+x.id+'">还是买了</button><button class="x" data-sdel="'+x.id+'" aria-label="删除">×</button></div>';
   }).join(""):'<div class="empty">想买但忍住了？到「记账」填金额，点「我忍住了」</div>';
 }
 $("slist").addEventListener("click",function(e){
+  var bu=e.target.getAttribute("data-sbuy");
+  if(bu){var r=S.expenses.filter(function(x){return String(x.id)===bu})[0];if(r)startConvert(r);return}
   var d=e.target.getAttribute("data-sdel");
   if(d){S.expenses=S.expenses.filter(function(x){return String(x.id)!==d});queue({op:"del",id:+d});saveView();syncUI();}
 });
