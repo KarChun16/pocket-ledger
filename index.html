@@ -354,6 +354,10 @@ input[type=time]::-webkit-date-and-time-value{text-align:left}
 .wnav .x{width:30px;height:30px;font-size:18px}
 #freeMini:not([hidden])+.homebtns{margin-top:14px}
 .homebtns{margin-top:0}
+.pgrow{display:flex;align-items:center;gap:12px;width:100%;border:0;background:transparent;color:var(--ink);font:inherit;padding:9px 0;text-align:left;cursor:pointer;min-height:44px}
+.pgrow+.pgrow{border-top:.5px solid var(--line)}
+.pgl{width:72px;flex:none;color:var(--muted);font-size:14px}.pgrow .bar{flex:1;margin:0;height:8px}.pgv{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.pgbig{font-size:40px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;margin:0 0 8px}.pgbig small{font-size:20px;color:var(--muted);margin-left:2px}
 </style>
 </head>
 <body>
@@ -682,6 +686,7 @@ input[type=time]::-webkit-date-and-time-value{text-align:left}
 <script src="js/money.js"></script>
 <script src="js/timecard.js"></script>
 <script src="js/counters.js"></script>
+<script src="js/progress.js"></script>
 <script src="js/init.js"></script>
 </body>
 </html>

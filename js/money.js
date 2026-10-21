@@ -311,6 +311,7 @@ var openDebts={};
 function payRef(cat){var m=PAY_RE.exec(cat);return m?{id:m[1],rate:m[2]?+m[2]:0}:null}
 function r2(n){return Math.round(n*100)/100}
 function cm(cur,n){return cur==="MYR"?rm(n):cur+" "+Number(n).toLocaleString("en-MY",{minimumFractionDigits:0,maximumFractionDigits:2})}
+PL.money={debts:function(){return debts()},cm:cm,r2:r2};      /* for the progress module */
 function daysUntil(due){return Math.round((new Date(due+"T00:00:00")-new Date(today()+"T00:00:00"))/864e5)}
 function debts(){
   var list=[],by={};
