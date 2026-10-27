@@ -23,6 +23,7 @@ function saveCfg(patch){var c=cfg();Object.keys(patch).forEach(function(k){if(pa
 
 /* ---- the three numbers ---- */
 function owed(){var l=(PL.money?PL.money.debts():[]).filter(function(d){return d.dir==="owe"});return l}
+function lentList(){return (PL.money?PL.money.debts():[]).filter(function(d){return d.dir==="lent"&&!d.acct}).sort(function(a,b){return (a.settled-b.settled)||(a.start<b.start?-1:a.start>b.start?1:0)})}
 function debtInfo(){
   var c=cfg(),l=owed(),d=null;
   if(c.debtId!==undefined)d=l.filter(function(x){return String(x.id)===String(c.debtId)})[0]||null;
@@ -56,6 +57,8 @@ function drawHome(el){
   if(di)h+=homeRow(tl("还朋友"),di.pct,esc(pct(di.pct))+"%");
   if(q)h+=homeRow(tl("戒烟"),null,q.future?esc(tl("{0} 天后开始",-q.n)):esc(tl("第 {0} 天",q.n+1))+(q.saved>0?" · "+esc(rm0(q.saved)):""));
   if(f.target>0)h+=homeRow(tl("备用金"),f.pct,esc(pct(f.pct))+"%");
+  var lt=lentList().filter(function(d){return !d.settled});
+  if(lt.length){var lr=0;lt.forEach(function(d){lr+=d.leftRM!==null?d.leftRM:0});h+=homeRow(tl("别人还我"),null,esc(tl("{0} 笔 · {1}",lt.length,rm0(lr))))}
   el.hidden=!h;                                                       /* nothing set up yet: no card on the home page (the page is under 钱 → 进度) */
   var html='<h2>'+esc(tl("进度"))+'</h2>'+h;
   if(el._h!==html){el.innerHTML=html;el._h=html}
@@ -115,11 +118,22 @@ function fundCard(){
   if(f.rows.length)h+='<h3 class="tcph">'+esc(tl("存入记录"))+'</h3>'+f.rows.slice(0,8).map(function(r){return '<div class="tcprow"><span>'+esc(r.date.slice(5).replace("-","/"))+'</span><b>'+esc(rm(+r.val))+' <button class="x" data-pgfdel="'+r.id+'" aria-label="'+esc(tl("删除"))+'" style="display:inline-flex;vertical-align:middle">×</button></b></div>'}).join("");
   return h+'</div>';
 }
+function lentCard(){
+  var l=lentList(),h='<div class="card"><h2>'+esc(tl("别人还我"))+'</h2>';
+  if(!l.length)return h+'<p class="msg" style="margin:0">'+esc(tl("还没有「别人欠我」的记录。到 钱 → 欠款，点「＋ 别人欠我钱」添加。"))+'</p></div>';
+  return h+l.map(function(d,i){
+    var p=d.principal>0?Math.min(100,d.paid/d.principal*100):100,late=!d.settled&&d.due&&d.days!==null&&d.days<0;
+    return '<div class="pglent"'+(i?' style="border-top:.5px solid var(--line);padding-top:12px;margin-top:12px"':'')+'><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><b>'+esc(d.name)+'</b><span class="'+(d.settled?"tcok":"")+'">'+(d.settled?esc(tl("已收齐 ✓")):esc(pct(p))+"%")+'</span></div>'+
+      '<div class="bar" style="margin:6px 0"><i style="width:'+p+'%"></i></div>'+
+      '<p class="msg" style="margin:0">'+esc(tl("已收 {0} / {1}",PL.money.cm(d.cur,d.paid),PL.money.cm(d.cur,d.principal)))+(d.settled?"":" · "+esc(tl("还剩 {0}",PL.money.cm(d.cur,d.left))))+'</p>'+
+      (!d.settled&&d.due?'<p class="msg'+(late?" tcshort":"")+'" style="margin:2px 0 0">'+esc(late?tl("逾期 {0} 天",-d.days):tl("到期 {0}",d.due))+'</p>':"")+'</div>';
+  }).join("")+'</div>';
+}
 function drawPage(){
   var b=$("pgBody");if(!b)return;
   var a=document.activeElement;
   if(a&&b.contains(a)&&/^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName))return;       /* never redraw under a field that is being typed in */
-  var html=debtCard()+quitCard()+fundCard();
+  var html=debtCard()+lentCard()+quitCard()+fundCard();
   if(b._h!==html){var y=window.scrollY;b.innerHTML=html;b._h=html;if(window.scrollY!==y)window.scrollTo(0,y)}
 }
 
@@ -177,8 +191,8 @@ PL.module({
     PL.on("synced",function(){if(!$("p-progress").hidden)drawPage()});
   },
   en:{
-    exact:{"进度":"Progress","还朋友":"Pay back a friend","戒烟":"Quit smoking","备用金":"Emergency fund","设定你的目标":"Set your goals","选哪一笔欠款":"Which debt","每月打算还 (RM)":"Planned monthly payment (RM)","还没有「我欠」的欠款。到 钱 → 欠款 添加后，这里会显示还了几成。":"No \"I owe\" debt yet. Add one under Money → Debt and this shows how much is paid back.","已经还清了 🎉":"Paid off 🎉","定一个开始戒烟的日子，这里会数你撑了几天、省了多少钱。":"Pick a start day and this counts how many days you made it and how much you saved.","从哪天开始":"Start date","每天抽烟花多少 (RM)":"Spent on cigarettes per day (RM)","开始戒烟":"Start quitting","填上每天抽烟花多少，就会算出省了多少。":"Enter what you spend per day and it works out what you saved.","我又抽了，重新开始":"I smoked, start again","修改":"Edit","不用这个了（清除）":"Remove this tracker","再按确认":"Tap again to confirm","备用金够了 🎉":"Emergency fund is covered 🎉","设一个备用金目标（例如 3 个月的生活费），每次存入后记一笔。":"Set an emergency-fund target (for example 3 months of living costs) and log each deposit.","目标 (RM)":"Target (RM)","每月打算存 (RM)":"Planned monthly deposit (RM)","存入一笔":"Add a deposit","金额 (RM)":"Amount (RM)","日期":"Date","存入":"Deposit","存入记录":"Deposits","删除":"Delete","请选开始的日期":"Please pick a start date","请填每天抽烟花多少":"Please enter what you spend per day","一天一天来 💪":"One day at a time 💪","没关系，重新开始":"It's okay, starting again","金额要大于 0":"The amount must be above 0","已存入":"Deposited"},
-    tpl:{"{0} 天后开始":"Starts in {0} d","第 {0} 天":"Day {0}","已还 {0} / {1}":"Paid {0} / {1}","还剩 {0}（约 {1}）":"{0} left (about {1})","还剩 {0}":"{0} left","已省 {0}":"Saved {0}","相当于欠款剩余的 {0}%":"That is {0}% of what is left of the debt","今天撑过去，再省 {0}":"Get through today and save {0} more","最长一次 {0} 天":"Longest run: {0} days","已存 {0} / {1}":"Saved {0} / {1}","还差 {0}":"{0} to go","每月 {0}，约 {1} 个月（{2}）":"{0} a month, about {1} months ({2})"}
+    exact:{"进度":"Progress","别人还我":"Paid back to me","还没有「别人欠我」的记录。到 钱 → 欠款，点「＋ 别人欠我钱」添加。":"Nobody owes you yet. Add one under Money → Debt with \"+ Someone owes me\".","已收齐 ✓":"Collected in full ✓","还朋友":"Pay back a friend","戒烟":"Quit smoking","备用金":"Emergency fund","设定你的目标":"Set your goals","选哪一笔欠款":"Which debt","每月打算还 (RM)":"Planned monthly payment (RM)","还没有「我欠」的欠款。到 钱 → 欠款 添加后，这里会显示还了几成。":"No \"I owe\" debt yet. Add one under Money → Debt and this shows how much is paid back.","已经还清了 🎉":"Paid off 🎉","定一个开始戒烟的日子，这里会数你撑了几天、省了多少钱。":"Pick a start day and this counts how many days you made it and how much you saved.","从哪天开始":"Start date","每天抽烟花多少 (RM)":"Spent on cigarettes per day (RM)","开始戒烟":"Start quitting","填上每天抽烟花多少，就会算出省了多少。":"Enter what you spend per day and it works out what you saved.","我又抽了，重新开始":"I smoked, start again","修改":"Edit","不用这个了（清除）":"Remove this tracker","再按确认":"Tap again to confirm","备用金够了 🎉":"Emergency fund is covered 🎉","设一个备用金目标（例如 3 个月的生活费），每次存入后记一笔。":"Set an emergency-fund target (for example 3 months of living costs) and log each deposit.","目标 (RM)":"Target (RM)","每月打算存 (RM)":"Planned monthly deposit (RM)","存入一笔":"Add a deposit","金额 (RM)":"Amount (RM)","日期":"Date","存入":"Deposit","存入记录":"Deposits","删除":"Delete","请选开始的日期":"Please pick a start date","请填每天抽烟花多少":"Please enter what you spend per day","一天一天来 💪":"One day at a time 💪","没关系，重新开始":"It's okay, starting again","金额要大于 0":"The amount must be above 0","已存入":"Deposited"},
+    tpl:{"{0} 笔 · {1}":"{0} open · {1}","已收 {0} / {1}":"Received {0} / {1}","逾期 {0} 天":"{0} days overdue","到期 {0}":"Due {0}","{0} 天后开始":"Starts in {0} d","第 {0} 天":"Day {0}","已还 {0} / {1}":"Paid {0} / {1}","还剩 {0}（约 {1}）":"{0} left (about {1})","还剩 {0}":"{0} left","已省 {0}":"Saved {0}","相当于欠款剩余的 {0}%":"That is {0}% of what is left of the debt","今天撑过去，再省 {0}":"Get through today and save {0} more","最长一次 {0} 天":"Longest run: {0} days","已存 {0} / {1}":"Saved {0} / {1}","还差 {0}":"{0} to go","每月 {0}，约 {1} 个月（{2}）":"{0} a month, about {1} months ({2})"}
   }
 });
 PL.progress={cfg:cfg,saveCfg:saveCfg,debtInfo:debtInfo,quitInfo:quitInfo,fundInfo:fundInfo};   /* for tests */

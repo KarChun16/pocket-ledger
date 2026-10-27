@@ -424,13 +424,21 @@ function debtFormMode(){
   $("daLbl").textContent=tl("金额 ({0})",cur);
 }
 $("dd").addEventListener("change",debtFormMode);$("dc").addEventListener("change",debtFormMode);
+/* two explicit ways in: "I owe someone" and "someone owes me" */
+function openDebtForm(dir){
+  if(debtEditId!==null)endDebtEdit();
+  $("dd").value=dir;debtFormMode();
+  PL.popTitle("dformCard",dir==="lent"?"别人欠我钱":"我欠别人钱");
+}
+$("dOweBtn").addEventListener("click",function(){openDebtForm("owe")});           /* runs before the window opens (the row opens "dformCard" itself) */
+$("dLentBtn").addEventListener("click",function(){openDebtForm("lent");openPop("dformCard")});
 var debtEditId=null;   /* editing keeps the id, so payments stay attached; direction and currency are fixed */
 function startDebtEdit(d){
   debtEditId=String(d.id);
   $("dd").value=d.dir;$("dc").value=d.cur;$("dd").disabled=true;$("dc").disabled=true;
   $("dn").value=d.name;$("da").value=d.principal;$("ds").value=d.start;$("du").value=d.due;$("dr").value=d.refRate||"";$("dsp").checked=d.spend;
   debtFormMode();
-  $("dtitle").textContent="修改欠款";$("dadd").textContent="保存修改";$("dcancel").hidden=false;
+  PL.popTitle("dformCard","修改欠款");$("dtitle").textContent="修改欠款";$("dadd").textContent="保存修改";$("dcancel").hidden=false;
   $("dmsg").textContent="类型和币种不能改（要改请删除后重新添加）；已有的还款记录会保留";
   openPop("dformCard");
 }
@@ -1174,6 +1182,9 @@ PL.on("pops",function(){var bb=document.querySelector('[data-pop="budCard2"]');i
   PL.sub("goal",function(){var n=goals().length;return n?tl("{0} 个",n):"还没设"});
   PL.sub("slist",function(){var n=S.expenses.filter(function(x){return x.cat===SKIP}).length;return n?tl("{0} 次",n):""});
   PL.sub("acct",function(){var n=accounts().length;return n?tl("{0} 个",n):""});
+  var left=function(dir){var t=0,n=0;debts().forEach(function(d){if(d.dir===dir&&!d.settled&&!d.acct){n++;t+=d.leftRM!==null?d.leftRM:0}});return n?tl("{0} 笔 · {1}",n,rm0(t)):""};
+  PL.sub("oweRow",function(){return left("owe")});
+  PL.sub("lentRow",function(){return left("lent")});
   PL.sub("dlist",function(){var n=debts().filter(function(d){return !d.settled&&!d.acct}).length;return n?tl("{0} 笔未还清",n):""});
   PL.sub("week",function(){var w=weekData(latestWeek(),7);return weekHasActivity(w)?tl("上周 {0}",rm0(w.tot)):""});
   PL.sub("free",function(){var f=freeMoney(cm());return f.wage>0?(f.left<0?tl("超支 {0}",rm0(-f.left)):tl("还剩 {0}",rm0(f.left))):"先设薪水"});
